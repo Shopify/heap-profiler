@@ -3,3 +3,9 @@ inherit_gem:
 
 Style/MethodCallWithArgsParentheses:
   Enabled: false
+
+Naming/FileName:
+  Enabled: false
+
+Lint/RescueException:
+  Enabled: false
