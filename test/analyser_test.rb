@@ -13,19 +13,25 @@ module HeapProfiler
 
     def test_empty_report
       with_analyser(:noop) do |analyser|
-        assert_equal 0, analyser.allocated_objects_count
+        assert_equal 0, analyser.total_allocated
+        assert_equal 0, analyser.total_allocated_memsize
+        assert_equal 0, analyser.total_retained
+        assert_equal 0, analyser.total_retained_memsize
+        # TODO: figure a way to make freed stats reliable
+        # assert_equal 0, analyser.total_freed
+        # assert_equal 0, analyser.total_freed_memsize
       end
     end
 
     def test_allocated_objects_count
       with_analyser(:simple_allocations) do |analyser|
-        assert_equal 10, analyser.allocated_objects_count
+        assert_equal 10, analyser.total_allocated
       end
     end
 
     def test_retained_objects_count
       with_analyser(:simple_retention) do |analyser|
-        assert_equal 6, analyser.retained_objects_count, -> { File.read(analyser.retained_diff.path) }
+        assert_equal 6, analyser.total_retained, -> { File.read(analyser.retained.path) }
       end
     end
 
@@ -33,7 +39,7 @@ module HeapProfiler
       ObjectSpace.dump_all(output: File.open(File::NULL, 'w'))
       simple_retention
       with_analyser(:simple_free) do |analyser|
-        assert_equal 6, analyser.freed_objects_count, -> { File.read(analyser.freed_diff.path) }
+        assert_equal 6, analyser.total_freed, -> { File.read(analyser.freed.path) }
       end
     end
 

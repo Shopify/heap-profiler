@@ -2,6 +2,41 @@
 
 module HeapProfiler
   class Dump
+    class Stats
+      attr_accessor :count, :memsize
+
+      def process(object)
+        @count += 1
+        @memsize += object.fetch(:memsize, 0)
+      end
+
+      def initialize
+        @count = 0
+        @memsize = 0
+      end
+    end
+
+    class GlobalStats < Stats
+      class << self
+        def from(dump)
+          stats = new
+          dump.each_object do |object|
+            stats.process(object)
+          end
+          stats
+        end
+      end
+
+      def process(object)
+        super
+        per_type[object[:type]].process(object)
+      end
+
+      def per_type
+        @per_type = Hash.new { |h, k| h[k] = Stats.new }
+      end
+    end
+
     class << self
       def open(dir, name)
         Dump.new(File.join(dir, "#{name}.heap"))
@@ -18,6 +53,16 @@ module HeapProfiler
       each_line_with_address do |line, address|
         file << line unless other.index.include?(address)
       end
+    end
+
+    def each_object
+      File.open(path).each_line do |line|
+        yield JSON.parse(line, symbolize_names: true)
+      end
+    end
+
+    def stats
+      @stats ||= GlobalStats.from(self)
     end
 
     def size

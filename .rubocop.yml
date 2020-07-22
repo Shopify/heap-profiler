@@ -1,6 +1,10 @@
 inherit_gem:
   rubocop-shopify: rubocop.yml
 
+AllCops:
+  Exclude:
+    - bin/generate-report
+
 Style/MethodCallWithArgsParentheses:
   Enabled: false
 
@@ -8,4 +12,7 @@ Naming/FileName:
   Enabled: false
 
 Lint/RescueException:
+  Enabled: false
+
+Metrics/ParameterLists:
   Enabled: false

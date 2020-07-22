@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
 require "set"
+require "json"
 
 require "heap_profiler/runtime"
 require "heap_profiler/dump"
 require "heap_profiler/analyzer"
+require "heap_profiler/polychrome"
+require "heap_profiler/monochrome"
+require "heap_profiler/results"
 require "heap_profiler/cli"

@@ -17,10 +17,8 @@ module HeapProfiler
     end
 
     def print_report(report_directory)
-      analyzer = Analyzer.new(report_directory)
-      puts "Allocated objects: #{analyzer.allocated_objects_count}"
-      puts "Retained objects: #{analyzer.retained_objects_count}"
-      puts "Freed objects: #{analyzer.freed_objects_count}"
+      results = Results.new(Analyzer.new(report_directory))
+      results.pretty_print(scale_bytes: true, normalize_paths: true)
     end
 
     def print_usage
