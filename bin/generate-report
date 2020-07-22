@@ -1,0 +1,17 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+require 'bundler/setup'
+require "heap-profiler"
+require 'fileutils'
+
+$freed_objects = ["i am free", "i am free too"]
+
+dir = ARGV.first
+FileUtils.mkdir_p(dir)
+FileUtils.rm_rf(Dir[File.join(dir, '*')])
+
+HeapProfiler.report(dir) do
+  $retained_objects = ["I am retained", "I am retained too"]
+  ["I am allocated", "I am allocated too"]
+  $freed_objects = nil
+end

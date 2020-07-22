@@ -20,7 +20,23 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+To record a profile:
+
+```ruby
+require 'heap-profiler'
+HeapProfiler.report('path/to/report/directory') do
+  # You code here
+end
+```
+
+To then analyse the profile
+
+```bash
+$ heap-profiler path/to/report/directory
+Allocated objects: 3
+Retained objects: 3
+Freed objects: 2
+```
 
 ## Development
 

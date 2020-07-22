@@ -5,4 +5,6 @@ require "heap_profiler/full"
 require 'tempfile'
 require 'tmpdir'
 
+require "byebug" unless ENV["CI"]
+
 require "minitest/autorun"
