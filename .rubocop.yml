@@ -4,6 +4,7 @@ inherit_gem:
 AllCops:
   Exclude:
     - bin/generate-report
+    - vendor/bundle/**/*
 
 Style/MethodCallWithArgsParentheses:
   Enabled: false
