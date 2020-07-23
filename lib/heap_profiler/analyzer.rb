@@ -14,7 +14,7 @@ module HeapProfiler
         @metric = METRICS.fetch(metric)
       end
 
-      def process(_analyzer, object)
+      def process(_index, object)
         @stats += @metric.call(object)
       end
 
@@ -24,14 +24,14 @@ module HeapProfiler
 
     class GroupedDimension < Dimension
       GROUPINGS = {
-        "file" => -> (_analizer, object) { object[:file] },
-        "location" => -> (_analizer, object) do
+        "file" => -> (_index, object) { object[:file] },
+        "location" => -> (_index, object) do
           if (file = object[:file]) && (line = object[:line])
             "#{file}:#{line}"
           end
         end,
-        "gem" => -> (analyzer, object) { analyzer.guess_gem(object[:file]) },
-        "class" => -> (analyzer, object) { analyzer.guess_class(object) },
+        "gem" => -> (index, object) { index.guess_gem(object[:file]) },
+        "class" => -> (index, object) { index.guess_class(object) },
       }.freeze
 
       attr_reader :stats
@@ -41,8 +41,8 @@ module HeapProfiler
         @stats = Hash.new { |h, k| h[k] = 0 }
       end
 
-      def process(analyzer, object)
-        if (group = @grouping.call(analyzer, object))
+      def process(index, object)
+        if (group = @grouping.call(index, object))
           @stats[group] += @metric.call(object)
         end
       end
@@ -102,7 +102,7 @@ module HeapProfiler
         @stats = Hash.new { |h, k| h[k] = StringGroup.new(k) }
       end
 
-      def process(_analyzer, object)
+      def process(_index, object)
         return unless object[:type] == "STRING"
         value = object[:value]
         return unless value # broken strings etc
@@ -138,7 +138,7 @@ module HeapProfiler
       @baseline = open_dump('baseline')
       @allocated = open_dump('allocated')
       @retained = open_dump('retained')
-      @gem_guess_cache = {}
+      @index = Index.new(@allocated)
     end
 
     def run(type, metrics, groupings)
@@ -157,110 +157,9 @@ module HeapProfiler
       heap_diff = public_send(type)
       processors = dimensions.values
       heap_diff.each_object do |object|
-        processors.each { |p| p.process(self, object) }
+        processors.each { |p| p.process(@index, object) }
       end
       dimensions
-    end
-
-    BUILTIN_CLASSES = {
-      "FILE" => "File",
-      "ICLASS" => "ICLASS",
-      "COMPLEX" => "Complex",
-      "RATIONAL" => "Rational",
-      "BIGNUM" => "Bignum",
-      "FLOAT" => "Float",
-      "ARRAY" => "Array",
-      "STRING" => "String",
-      "HASH" => "Hash",
-      "SYMBOL" => "Symbol",
-      "MODULE" => "Module",
-      "CLASS" => "Class",
-      "REGEXP" => "Regexp",
-      "MATCH" => "MatchData",
-      "ROOT" => "<VM Root>",
-    }.freeze
-
-    IMEMO_TYPES = Hash.new { |h, k| h[k] = "<#{k}> (IMEMO)" }
-    DATA_TYPES = Hash.new { |h, k| h[k] = "#{k.capitalize} (DATA)" }
-
-    def guess_class(object)
-      type = object[:type]
-      if (class_name = BUILTIN_CLASSES[type])
-        return class_name
-      end
-
-      return IMEMO_TYPES[object[:imemo_type]] if type == 'IMEMO'
-      return DATA_TYPES[object[:struct]] if type == 'DATA'
-
-      if type == "OBJECT" || type == "STRUCT"
-        class_address = object[:class]
-        return unless class_address
-
-        return class_index.fetch(object_address(class_address)) do
-          $stderr.puts("WARNING: Couldn't infer class name of: #{object.inspect}")
-          nil
-        end
-      end
-
-      raise "[BUG] Couldn't infer type of #{object.inspect}"
-    end
-
-    def string_value(object)
-      value = object[:value]
-      return value if value
-
-      if object[:shared]
-        string_index[object_address(object[:references].first)]
-      end
-    end
-
-    def string_index
-      @string_index ||= begin
-        build_indices
-        @string_index
-      end
-    end
-
-    def class_index
-      @class_index ||= begin
-        build_indices
-        @class_index
-      end
-    end
-
-    def object_address(address)
-      address.to_s.to_i(16)
-    end
-
-    def build_indices
-      @string_index = {}
-      @class_index = {}
-      @allocated.each_object do |object|
-        case object[:type]
-        when 'MODULE', 'CLASS'
-          @class_index[object_address(object[:address])] = object[:name]
-        when 'STRING'
-          next if object[:shared]
-          if (value = object[:value])
-            @string_index[object_address(object[:address])] = value
-          end
-        end
-      end
-    end
-
-    def guess_gem(path)
-      @gem_guess_cache[path] ||=
-        if %r{(/gems/.*)*/gems/(?<gemname>[^/]+)} =~ path
-          gemname
-        elsif %r{/rubygems[\./]}.match?(path)
-          "rubygems"
-        elsif %r{ruby/2\.[^/]+/(?<stdlib>[^/\.]+)} =~ path
-          stdlib
-        elsif %r{(?<app>[^/]+/(bin|app|lib))} =~ path
-          app
-        else
-          "other"
-        end
     end
 
     def total_allocated
