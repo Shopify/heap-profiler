@@ -55,10 +55,8 @@ module HeapProfiler
       end
     end
 
-    def each_object
-      File.open(path).each_line do |line|
-        yield JSON.parse(line, symbolize_names: true)
-      end
+    def each_object(&block)
+      FastJsonparser.load_many(path, batch_size: 10_000_000, &block)
     end
 
     def stats

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "set"
-require "json"
+require "fast_jsonparser"
 
 require "heap_profiler/runtime"
 require "heap_profiler/dump"
