@@ -15,7 +15,7 @@ module HeapProfiler
     }.freeze
 
     TYPES = ["allocated", "retained", "freed"].freeze
-    METRICS = ["memory", "objects"].freeze
+    METRICS = ["memory", "objects", "strings"].freeze
     GROUPINGS = ["gem", "file", "location", "class"].freeze
 
     attr_reader :analyzer, :types, :dimensions
@@ -43,9 +43,16 @@ module HeapProfiler
 
       @types.each do |type|
         @metrics.each do |metric|
+          next if metric == "strings"
           @groupings.each do |grouping|
             dump_data(io, dimensions, type, metric, grouping, options)
           end
+        end
+      end
+
+      if @metrics.include?("strings")
+        @types.each do |type|
+          dump_strings(io, dimensions[type], type, options)
         end
       end
     end
@@ -66,6 +73,24 @@ module HeapProfiler
       end
     end
 
+    def dump_strings(io, dimensions, type, options)
+      normalize_paths = options[:normalize_paths]
+      scale_data = options[:scale_bytes]
+      top = options.fetch(:top, 50)
+
+      print_title(io, "#{type.capitalize} String Report")
+
+      dimensions["strings"].top_n(top).each do |string|
+        print_output2 io, scale_data ? scale_bytes(string.memsize) : string.memsize, string.count, string.value.inspect
+        string.top_n(top).each do |string_location|
+          location = string_location.location
+          location = normalize_path(location) if normalize_paths
+          print_output2 io, '', string_location.count, location
+        end
+        io.puts
+      end
+    end
+
     def print_title(io, title)
       io.puts
       io.puts title
@@ -74,6 +99,10 @@ module HeapProfiler
 
     def print_output(io, topic, detail)
       io.puts "#{@colorize.path(topic.to_s.rjust(10))}  #{detail}"
+    end
+
+    def print_output2(io, topic1, topic2, detail)
+      io.puts "#{@colorize.path(topic1.to_s.rjust(10))}  #{@colorize.path(topic2.to_s.rjust(6))}  #{detail}"
     end
 
     def normalize_path(path)

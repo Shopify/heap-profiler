@@ -7,14 +7,23 @@ require 'fileutils'
 class SomeCustomStuff
 end
 
-$freed_objects = ["i am free", "i am free too"]
+$freed_objects = [+"i am free", +"i am free too"]
 
 dir = ARGV.first
 FileUtils.mkdir_p(dir)
 FileUtils.rm_rf(Dir[File.join(dir, '*')])
 
 HeapProfiler.report(dir) do
-  $retained_objects = ["I am retained", "I am retained too", SomeCustomStuff.new]
-  ["I am allocated", "I am allocated too"]
+  $retained_objects = [
+    +"I am retained",
+    +"I am retained",
+    +"I am retained too",
+    SomeCustomStuff.new,
+  ]
+  "I am a very very long string " * 4
+  [
+    +"I am allocated",
+    +"I am allocated too",
+  ]
   $freed_objects = nil
 end

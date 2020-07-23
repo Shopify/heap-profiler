@@ -11,51 +11,67 @@ module HeapProfiler
         io = StringIO.new
         results.pretty_print(io, scale_bytes: true, normalize_paths: true)
         assert_equal <<~EOS, io.string
-          Total allocated: 648.00 B (5 objects)
-          Total retained: 312.00 B (3 objects)
-          Total freed: 272.00 B (2 objects)
+          Total allocated: 1.04 kB (11 objects)
+          Total retained: 464.00 B (6 objects)
+          Total freed: 352.00 B (4 objects)
 
           allocated memory by gem
           -----------------------------------
+            469.00 B  heap-profiler/bin
             336.00 B  other
             232.00 B  heap-profiler/lib
-             80.00 B  heap-profiler/bin
 
           allocated memory by file
           -----------------------------------
+            469.00 B  heap-profiler/bin/generate-report
             232.00 B  heap-profiler/lib/heap_profiler/reporter.rb
-             80.00 B  heap-profiler/bin/generate-report
 
           allocated memory by location
           -----------------------------------
             232.00 B  heap-profiler/lib/heap_profiler/reporter.rb:99
-             80.00 B  heap-profiler/bin/generate-report:17
+            157.00 B  heap-profiler/bin/generate-report:23
+             72.00 B  heap-profiler/bin/generate-report:17
+             40.00 B  heap-profiler/bin/generate-report:26
+             40.00 B  heap-profiler/bin/generate-report:25
+             40.00 B  heap-profiler/bin/generate-report:21
+             40.00 B  heap-profiler/bin/generate-report:20
+             40.00 B  heap-profiler/bin/generate-report:19
+             40.00 B  heap-profiler/bin/generate-report:18
 
           allocated memory by class
           -----------------------------------
+            357.00 B  String
             336.00 B  Hash
             232.00 B  File
+             72.00 B  Array
              40.00 B  SomeCustomStuff
-             40.00 B  Array
 
           allocated objects by gem
           -----------------------------------
+                   8  heap-profiler/bin
                    2  other
-                   2  heap-profiler/bin
                    1  heap-profiler/lib
 
           allocated objects by file
           -----------------------------------
-                   2  heap-profiler/bin/generate-report
+                   8  heap-profiler/bin/generate-report
                    1  heap-profiler/lib/heap_profiler/reporter.rb
 
           allocated objects by location
           -----------------------------------
-                   2  heap-profiler/bin/generate-report:17
                    1  heap-profiler/lib/heap_profiler/reporter.rb:99
+                   1  heap-profiler/bin/generate-report:26
+                   1  heap-profiler/bin/generate-report:25
+                   1  heap-profiler/bin/generate-report:23
+                   1  heap-profiler/bin/generate-report:21
+                   1  heap-profiler/bin/generate-report:20
+                   1  heap-profiler/bin/generate-report:19
+                   1  heap-profiler/bin/generate-report:18
+                   1  heap-profiler/bin/generate-report:17
 
           allocated objects by class
           -----------------------------------
+                   6  String
                    2  Hash
                    1  SomeCustomStuff
                    1  File
@@ -64,41 +80,51 @@ module HeapProfiler
           retained memory by gem
           -----------------------------------
             232.00 B  heap-profiler/lib
-             80.00 B  heap-profiler/bin
+            232.00 B  heap-profiler/bin
 
           retained memory by file
           -----------------------------------
             232.00 B  heap-profiler/lib/heap_profiler/reporter.rb
-             80.00 B  heap-profiler/bin/generate-report
+            232.00 B  heap-profiler/bin/generate-report
 
           retained memory by location
           -----------------------------------
             232.00 B  heap-profiler/lib/heap_profiler/reporter.rb:99
-             80.00 B  heap-profiler/bin/generate-report:17
+             72.00 B  heap-profiler/bin/generate-report:17
+             40.00 B  heap-profiler/bin/generate-report:21
+             40.00 B  heap-profiler/bin/generate-report:20
+             40.00 B  heap-profiler/bin/generate-report:19
+             40.00 B  heap-profiler/bin/generate-report:18
 
           retained memory by class
           -----------------------------------
             232.00 B  File
+            120.00 B  String
+             72.00 B  Array
              40.00 B  SomeCustomStuff
-             40.00 B  Array
 
           retained objects by gem
           -----------------------------------
-                   2  heap-profiler/bin
+                   5  heap-profiler/bin
                    1  heap-profiler/lib
 
           retained objects by file
           -----------------------------------
-                   2  heap-profiler/bin/generate-report
+                   5  heap-profiler/bin/generate-report
                    1  heap-profiler/lib/heap_profiler/reporter.rb
 
           retained objects by location
           -----------------------------------
-                   2  heap-profiler/bin/generate-report:17
                    1  heap-profiler/lib/heap_profiler/reporter.rb:99
+                   1  heap-profiler/bin/generate-report:21
+                   1  heap-profiler/bin/generate-report:20
+                   1  heap-profiler/bin/generate-report:19
+                   1  heap-profiler/bin/generate-report:18
+                   1  heap-profiler/bin/generate-report:17
 
           retained objects by class
           -----------------------------------
+                   3  String
                    1  SomeCustomStuff
                    1  File
                    1  Array
@@ -106,7 +132,7 @@ module HeapProfiler
           freed memory by gem
           -----------------------------------
             232.00 B  heap-profiler/lib
-             40.00 B  other
+            120.00 B  other
 
           freed memory by file
           -----------------------------------
@@ -119,11 +145,12 @@ module HeapProfiler
           freed memory by class
           -----------------------------------
             232.00 B  File
+             80.00 B  String
              40.00 B  Array
 
           freed objects by gem
           -----------------------------------
-                   1  other
+                   3  other
                    1  heap-profiler/lib
 
           freed objects by file
@@ -136,8 +163,45 @@ module HeapProfiler
 
           freed objects by class
           -----------------------------------
+                   2  String
                    1  File
                    1  Array
+
+          Allocated String Report
+          -----------------------------------
+             80.00 B       2  "I am retained"
+                           1  heap-profiler/bin/generate-report:19
+                           1  heap-profiler/bin/generate-report:18
+
+             40.00 B       1  "I am retained too"
+                           1  heap-profiler/bin/generate-report:20
+
+             40.00 B       1  "I am allocated too"
+                           1  heap-profiler/bin/generate-report:26
+
+             40.00 B       1  "I am allocated"
+                           1  heap-profiler/bin/generate-report:25
+
+            157.00 B       1  "I am a very very long string I am a very very long string I am a very very long string I am a very very long string "
+                           1  heap-profiler/bin/generate-report:23
+
+
+          Retained String Report
+          -----------------------------------
+             80.00 B       2  "I am retained"
+                           1  heap-profiler/bin/generate-report:19
+                           1  heap-profiler/bin/generate-report:18
+
+             40.00 B       1  "I am retained too"
+                           1  heap-profiler/bin/generate-report:20
+
+
+          Freed String Report
+          -----------------------------------
+             40.00 B       1  "i am free too"
+
+             40.00 B       1  "i am free"
+
         EOS
       end
     end

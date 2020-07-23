@@ -55,6 +55,70 @@ module HeapProfiler
       end
     end
 
+    class StringDimension
+      class StringLocation
+        attr_reader :location, :count, :memsize
+
+        def initialize(location)
+          @location = location
+          @count = 0
+          @memsize = 0
+        end
+
+        def process(object)
+          @count += 1
+          @memsize += object[:memsize]
+        end
+      end
+
+      class StringGroup
+        attr_reader :value, :count, :memsize, :locations
+        def initialize(value) # TODO: should we consider encoding?
+          @value = value
+          @locations_counts = Hash.new { |h, k| h[k] = StringLocation.new(k) }
+          @count = 0
+          @memsize = 0
+        end
+
+        def process(object)
+          @count += 1
+          @memsize += object[:memsize]
+          if (file = object[:file]) && (line = object[:line])
+            @locations_counts["#{file}:#{line}"].process(object)
+          end
+        end
+
+        def top_n(_max)
+          values = @locations_counts.values
+          values.sort! do |a, b|
+            cmp = b.count <=> a.count
+            cmp == 0 ? b.location <=> a.location : cmp
+          end
+        end
+      end
+
+      attr_reader :stats
+      def initialize
+        @stats = Hash.new { |h, k| h[k] = StringGroup.new(k) }
+      end
+
+      def process(_analyzer, object)
+        return unless object[:type] == "STRING"
+        value = object[:value]
+        return unless value # broken strings etc
+        @stats[value].process(object)
+      end
+
+      def top_n(max)
+        values = @stats.values
+        values.sort! do |a, b|
+          cmp = b.count <=> a.count
+          cmp == 0 ? b.value <=> a.value : cmp
+        end
+        values.take(max)
+      end
+    end
+
     # Dumping the heap does allocates by itself
     # TODO: See with Aaron and Allan what they are and how to get rid of them
     # These two hashes are referenced by `"root":"machine_context"`. However `0x7fb0a5bcfc20` isn't in the dump.
@@ -80,9 +144,13 @@ module HeapProfiler
     def run(type, metrics, groupings)
       dimensions = {}
       metrics.each do |metric|
-        dimensions["total_#{metric}"] = Dimension.new(metric)
-        groupings.each do |grouping|
-          dimensions["#{metric}_by_#{grouping}"] = GroupedDimension.new(metric, grouping)
+        if metric == "strings"
+          dimensions["strings"] = StringDimension.new
+        else
+          dimensions["total_#{metric}"] = Dimension.new(metric)
+          groupings.each do |grouping|
+            dimensions["#{metric}_by_#{grouping}"] = GroupedDimension.new(metric, grouping)
+          end
         end
       end
 
@@ -109,19 +177,49 @@ module HeapProfiler
       class_address = object[:class]
       return unless class_address
 
-      @class_index ||= build_class_index
-
-      @class_index.fetch(class_address.to_s.to_i(16)) do
+      class_index.fetch(object_address(class_address)) do
         $stderr.puts("WARNING: Couldn't infer class name of: #{object.inspect}")
       end
     end
 
-    def build_class_index
-      {}.tap do |index|
-        @allocated.each_object do |object|
-          case object[:type]
-          when 'MODULE', 'CLASS'
-            index[object[:address].to_s.to_i(16)] = object[:name]
+    def string_value(object)
+      value = object[:value]
+      return value if value
+
+      if object[:shared]
+        string_index[object_address(object[:references].first)]
+      end
+    end
+
+    def string_index
+      @string_index ||= begin
+        build_indices
+        @string_index
+      end
+    end
+
+    def class_index
+      @class_index ||= begin
+        build_indices
+        @class_index
+      end
+    end
+
+    def object_address(address)
+      address.to_s.to_i(16)
+    end
+
+    def build_indices
+      @string_index = {}
+      @class_index = {}
+      @allocated.each_object do |object|
+        case object[:type]
+        when 'MODULE', 'CLASS'
+          @class_index[object_address(object[:address])] = object[:name]
+        when 'STRING'
+          next if object[:shared]
+          if (value = object[:value])
+            @string_index[object_address(object[:address])] = value
           end
         end
       end
