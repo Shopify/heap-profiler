@@ -4,6 +4,7 @@ require "objspace"
 require "fileutils"
 
 require "heap_profiler/version"
+require "heap_profiler/native"
 require "heap_profiler/reporter"
 
 module HeapProfiler
