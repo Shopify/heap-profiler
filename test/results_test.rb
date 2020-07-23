@@ -7,7 +7,7 @@ module HeapProfiler
       Dir.mktmpdir do |dir|
         assert_equal true, system(File.expand_path('../../bin/generate-report', __FILE__), dir)
 
-        results = Results.new(Analyzer.new(dir), %w(allocated retained))
+        results = DiffResults.new(dir, %w(allocated retained))
         io = StringIO.new
         results.pretty_print(io, scale_bytes: true, normalize_paths: true)
         assert_equal <<~EOS, io.string

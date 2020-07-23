@@ -119,29 +119,12 @@ module HeapProfiler
       end
     end
 
-    # Dumping the heap does allocates by itself
-    # TODO: See with Aaron and Allan what they are and how to get rid of them
-    # These two hashes are referenced by `"root":"machine_context"`. However `0x7fb0a5bcfc20` isn't in the dump.
-    # {"address":"0x7fb0a280e5a8", "type":"HASH", "size":1, "references":["0x7fb0a5bcfc20"], "memsize":168}
-    # {"address":"0x7fb0a280e9e0", "type":"HASH", "size":1, "references":["0x7fb0a5bcfc20"], "memsize":168}
-    # No idea where that file come from.
-    # {"address":"0x7fb0a5bcfdb0", "type":"FILE", "fd":-1, "references":["0x7fb0a5bcfd88"], "memsize":232}
-    SIDE_EFFECT_ALLOCATIONS = 3
-    SIDE_EFFECT_ALLOCATIONS_MEMSIZE = 168 * 2 + 232
-    SIDE_EFFECT_RETENTIONS = 1
-    SIDE_EFFECT_RETENTIONS_MEMSIZE = 232
-    SIDE_EFFECT_RELEASES = 2
-    SIDE_EFFECT_RELEASES_MEMSIZE = 168 * 2
-
-    def initialize(report_directory)
-      @report_directory = report_directory
-      @baseline = open_dump('baseline')
-      @allocated = open_dump('allocated')
-      @retained = open_dump('retained')
-      @index = Index.new(@allocated)
+    def initialize(heap, index)
+      @heap = heap
+      @index = index
     end
 
-    def run(type, metrics, groupings)
+    def run(metrics, groupings)
       dimensions = {}
       metrics.each do |metric|
         if metric == "strings"
@@ -154,64 +137,11 @@ module HeapProfiler
         end
       end
 
-      heap_diff = public_send(type)
       processors = dimensions.values
-      heap_diff.each_object do |object|
+      @heap.each_object do |object|
         processors.each { |p| p.process(@index, object) }
       end
       dimensions
-    end
-
-    def total_allocated
-      allocated.stats.count - SIDE_EFFECT_ALLOCATIONS
-    end
-
-    def total_allocated_memsize
-      allocated.stats.memsize - SIDE_EFFECT_ALLOCATIONS_MEMSIZE
-    end
-
-    def total_retained
-      retained.stats.count - SIDE_EFFECT_RETENTIONS
-    end
-
-    def total_retained_memsize
-      retained.stats.memsize - SIDE_EFFECT_RETENTIONS_MEMSIZE
-    end
-
-    def total_freed
-      freed.stats.count - SIDE_EFFECT_RELEASES
-    end
-
-    def total_freed_memsize
-      freed.stats.memsize - SIDE_EFFECT_RELEASES_MEMSIZE
-    end
-
-    def allocated
-      @allocated_diff ||= build_diff('allocated-diff', @baseline, @allocated)
-    end
-
-    def retained
-      @retained_diff ||= build_diff('retained-diff', @baseline, @retained)
-    end
-
-    def freed
-      @freed_diff ||= build_diff('freed-diff', @retained, @baseline)
-    end
-
-    private
-
-    def build_diff(name, base, extra)
-      diff = open_dump(name)
-      unless diff.exist?
-        File.open(diff.path, 'w+') do |f|
-          extra.diff(base, f)
-        end
-      end
-      diff
-    end
-
-    def open_dump(name)
-      Dump.open(@report_directory, name)
     end
   end
 end

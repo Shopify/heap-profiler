@@ -43,8 +43,8 @@ module HeapProfiler
       "ROOT" => "<VM Root>",
     }.freeze
 
-    IMEMO_TYPES = Hash.new { |h, k| h[k] = "<#{k}> (IMEMO)" }
-    DATA_TYPES = Hash.new { |h, k| h[k] = "#{k.capitalize} (DATA)" }
+    IMEMO_TYPES = Hash.new { |h, k| h[k] = "<#{k || 'unknown'}> (IMEMO)" }
+    DATA_TYPES = Hash.new { |h, k| h[k] = "<#{(k || 'unknown')}> (DATA)" }
 
     def guess_class(object)
       type = object[:type]

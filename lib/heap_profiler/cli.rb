@@ -7,7 +7,7 @@ module HeapProfiler
     end
 
     def run
-      if @argv.size == 1 && File.directory?(@argv.first)
+      if @argv.size == 1
         print_report(@argv.first)
         0
       else
@@ -16,13 +16,17 @@ module HeapProfiler
       end
     end
 
-    def print_report(report_directory)
-      results = Results.new(Analyzer.new(report_directory))
+    def print_report(path)
+      results = if File.directory?(path)
+        DiffResults.new(path)
+      else
+        HeapResults.new(path)
+      end
       results.pretty_print(scale_bytes: true, normalize_paths: true)
     end
 
     def print_usage
-      puts "Usage: #{$PROGRAM_NAME} directory"
+      puts "Usage: #{$PROGRAM_NAME} directory_or_heap_dump"
     end
   end
 end
