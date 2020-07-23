@@ -4,7 +4,6 @@ require "test_helper"
 module HeapProfiler
   class ResultsTest < Minitest::Test
     def test_full_results
-      skip("This test is too fragile for CI") if ENV["CI"]
       Dir.mktmpdir do |dir|
         assert_equal true, system(File.expand_path('../../bin/generate-report', __FILE__), dir)
 

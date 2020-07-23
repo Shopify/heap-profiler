@@ -49,9 +49,16 @@ module HeapProfiler
       @path = path
     end
 
+    # ObjectSpace.dump_all itself allocate objects.
+    #
+    # Before 2.7 it will allocate one String per class to get its name.
+    # After 2.7, it only allocate a couple hashes, a file etc.
+    #
+    # Either way we need to exclude them from the reports
+    REPORTER_LINE = %{"file":"#{REPORT_SOURCE_PATH}"}.freeze
     def diff(other, file)
       each_line_with_address do |line, address|
-        file << line unless other.index.include?(address)
+        file << line unless other.index.include?(address) || line.include?(REPORTER_LINE)
       end
     end
 
