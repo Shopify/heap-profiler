@@ -1,6 +1,8 @@
 # frozen_string_literal: true
+
 module HeapProfiler
-  module AnonymousModules
+  class << self
+
     # This works around a Ruby bug present until at least 2.7.1
     # ObjectSpace.dump include module and class names in the dump
     # and for anonymous modules and classes this mean naming them.
@@ -8,36 +10,26 @@ module HeapProfiler
     # So we name them at the start of the profile to avoid that.
     #
     # See: https://github.com/ruby/ruby/pull/3349
-    UNBOUND_METHOD_MODULE_NAME = Module.instance_method(:name)
-    private_constant :UNBOUND_METHOD_MODULE_NAME
-
-    class << self
-      def name_them!
-        @count = 0
+    #
+    # TODO: Could we actually do the dump ourselves? objspace is a extension already.
+    if RUBY_VERSION < '2.8'
+      def name_anonymous_modules!
         ObjectSpace.each_object(Module) do |mod|
           next if mod.singleton_class?
           unless real_mod_name(mod)
-            @count += 1
-            const_set("A#{@count}", mod)
+            # We have to assign it at the top level to avoid allocating a string for the name
+            ::Object.const_set(:AnonymousClassOrModule, mod)
+            ::Object.send(:remove_const, :AnonymousClassOrModule)
           end
         end
       end
 
-      def undo!
-        while @count > 0
-          remove_const("A#{@count}")
-          @count -= 1
-        end
+      ::Module.alias_method(:__real_mod_name, :name)
+      def real_mod_name(mod)
+        mod.__real_mod_name
       end
-
-      if UnboundMethod.method_defined?(:bind_call)
-        def real_mod_name(mod)
-          UNBOUND_METHOD_MODULE_NAME.bind_call(mod)
-        end
-      else
-        def real_mod_name(mod)
-          UNBOUND_METHOD_MODULE_NAME.bind(mod).call
-        end
+    else
+      def name_anonymous_modules!
       end
     end
   end
@@ -56,7 +48,7 @@ module HeapProfiler
       @allocated_heap = open_heap("allocated")
       @retained_heap = open_heap("retained")
 
-      AnonymousModules.name_them!
+      HeapProfiler.name_anonymous_modules!
 
       4.times { GC.start }
       GC.disable
@@ -64,6 +56,7 @@ module HeapProfiler
     end
 
     def stop
+      HeapProfiler.name_anonymous_modules!
       ObjectSpace.trace_object_allocations_stop if @enable_tracing
       dump_heap(@allocated_heap)
       GC.enable
@@ -72,7 +65,6 @@ module HeapProfiler
       @baseline_heap.close
       @allocated_heap.close
       @retained_heap.close
-      AnonymousModules.undo!
     end
 
     def run

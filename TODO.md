@@ -3,7 +3,6 @@
   - Setup CI
   - Test with other Ruby versions.
   - Stabilize the test suite.
-  - Test class / methods / etc definition and IMEMO objects.
 
 ### Explore
 

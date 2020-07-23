@@ -26,4 +26,5 @@ HeapProfiler.report(dir) do
     +"I am allocated too",
   ]
   $freed_objects = nil
+  Struct.new("foo".to_sym, :bar)
 end

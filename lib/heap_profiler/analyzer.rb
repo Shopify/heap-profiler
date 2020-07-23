@@ -167,19 +167,35 @@ module HeapProfiler
       "ARRAY" => "Array",
       "STRING" => "String",
       "HASH" => "Hash",
+      "SYMBOL" => "Symbol",
+      "MODULE" => "Module",
+      "CLASS" => "Class",
     }.freeze
 
+    IMEMO_TYPES = Hash.new { |h, k| h[k] = "IMEMO (#{k})".freeze }
+    DATA_TYPES = Hash.new { |h, k| h[k] = "DATA (#{k})".freeze }
+
+
     def guess_class(object)
-      if (class_name = BUILTIN_CLASSES[object[:type]])
+      type = object[:type]
+      if (class_name = BUILTIN_CLASSES[type])
         return class_name
       end
 
-      class_address = object[:class]
-      return unless class_address
+      return IMEMO_TYPES[object[:imemo_type]] if type == 'IMEMO'
+      return DATA_TYPES[object[:struct]] if type == 'DATA'
 
-      class_index.fetch(object_address(class_address)) do
-        $stderr.puts("WARNING: Couldn't infer class name of: #{object.inspect}")
+      if type == "OBJECT"
+        class_address = object[:class]
+        return unless class_address
+
+        return class_index.fetch(object_address(class_address)) do
+          $stderr.puts("WARNING: Couldn't infer class name of: #{object.inspect}")
+          nil
+        end
       end
+
+      raise "[BUG] Couldn't infer type of #{object.inspect}"
     end
 
     def string_value(object)
