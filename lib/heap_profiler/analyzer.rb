@@ -164,17 +164,24 @@ module HeapProfiler
 
     BUILTIN_CLASSES = {
       "FILE" => "File",
+      "ICLASS" => "ICLASS",
+      "COMPLEX" => "Complex",
+      "RATIONAL" => "Rational",
+      "BIGNUM" => "Bignum",
+      "FLOAT" => "Float",
       "ARRAY" => "Array",
       "STRING" => "String",
       "HASH" => "Hash",
       "SYMBOL" => "Symbol",
       "MODULE" => "Module",
       "CLASS" => "Class",
+      "REGEXP" => "Regexp",
+      "MATCH" => "MatchData",
+      "ROOT" => "<VM Root>",
     }.freeze
 
-    IMEMO_TYPES = Hash.new { |h, k| h[k] = "IMEMO (#{k})".freeze }
-    DATA_TYPES = Hash.new { |h, k| h[k] = "DATA (#{k})".freeze }
-
+    IMEMO_TYPES = Hash.new { |h, k| h[k] = "<#{k}> (IMEMO)" }
+    DATA_TYPES = Hash.new { |h, k| h[k] = "#{k.capitalize} (DATA)" }
 
     def guess_class(object)
       type = object[:type]
@@ -185,7 +192,7 @@ module HeapProfiler
       return IMEMO_TYPES[object[:imemo_type]] if type == 'IMEMO'
       return DATA_TYPES[object[:struct]] if type == 'DATA'
 
-      if type == "OBJECT"
+      if type == "OBJECT" || type == "STRUCT"
         class_address = object[:class]
         return unless class_address
 

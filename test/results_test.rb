@@ -28,7 +28,7 @@ module HeapProfiler
           allocated memory by location
           -----------------------------------
              3.09 kB  heap-profiler/bin/generate-report:29
-            232.00 B  heap-profiler/lib/heap_profiler/reporter.rb:91
+            232.00 B  heap-profiler/lib/heap_profiler/reporter.rb:89
             157.00 B  heap-profiler/bin/generate-report:23
              72.00 B  heap-profiler/bin/generate-report:17
              40.00 B  heap-profiler/bin/generate-report:26
@@ -41,14 +41,14 @@ module HeapProfiler
           allocated memory by class
           -----------------------------------
              1.18 kB  Class
-            848.00 B  IMEMO (iseq)
+            848.00 B  <iseq> (IMEMO)
             597.00 B  String
             528.00 B  Hash
-            384.00 B  IMEMO (ment)
+            384.00 B  <ment> (IMEMO)
             232.00 B  File
             112.00 B  Array
-             80.00 B  IMEMO (ifunc)
-             80.00 B  IMEMO (cref)
+             80.00 B  <ifunc> (IMEMO)
+             80.00 B  <cref> (IMEMO)
              40.00 B  Symbol
              40.00 B  SomeCustomStuff
 
@@ -66,7 +66,7 @@ module HeapProfiler
           allocated objects by location
           -----------------------------------
                   25  heap-profiler/bin/generate-report:29
-                   1  heap-profiler/lib/heap_profiler/reporter.rb:91
+                   1  heap-profiler/lib/heap_profiler/reporter.rb:89
                    1  heap-profiler/bin/generate-report:26
                    1  heap-profiler/bin/generate-report:25
                    1  heap-profiler/bin/generate-report:23
@@ -79,13 +79,13 @@ module HeapProfiler
           allocated objects by class
           -----------------------------------
                   12  String
-                   8  IMEMO (ment)
+                   8  <ment> (IMEMO)
                    3  Hash
-                   2  IMEMO (iseq)
-                   2  IMEMO (ifunc)
-                   2  IMEMO (cref)
                    2  Class
                    2  Array
+                   2  <iseq> (IMEMO)
+                   2  <ifunc> (IMEMO)
+                   2  <cref> (IMEMO)
                    1  Symbol
                    1  SomeCustomStuff
                    1  File
@@ -102,7 +102,7 @@ module HeapProfiler
 
           retained memory by location
           -----------------------------------
-            232.00 B  heap-profiler/lib/heap_profiler/reporter.rb:91
+            232.00 B  heap-profiler/lib/heap_profiler/reporter.rb:89
             160.00 B  heap-profiler/bin/generate-report:29
              72.00 B  heap-profiler/bin/generate-report:17
              40.00 B  heap-profiler/bin/generate-report:21
@@ -131,7 +131,7 @@ module HeapProfiler
           retained objects by location
           -----------------------------------
                    4  heap-profiler/bin/generate-report:29
-                   1  heap-profiler/lib/heap_profiler/reporter.rb:91
+                   1  heap-profiler/lib/heap_profiler/reporter.rb:89
                    1  heap-profiler/bin/generate-report:21
                    1  heap-profiler/bin/generate-report:20
                    1  heap-profiler/bin/generate-report:19

@@ -81,7 +81,8 @@ module HeapProfiler
       print_title(io, "#{type.capitalize} String Report")
 
       dimensions["strings"].top_n(top).each do |string|
-        print_output2 io, scale_data ? scale_bytes(string.memsize) : string.memsize, string.count, @colorize.string(string.value.inspect)
+        memsize = scale_data ? scale_bytes(string.memsize) : string.memsize
+        print_output2 io, memsize, string.count, @colorize.string(string.value.inspect)
         string.top_n(top).each do |string_location|
           location = string_location.location
           location = normalize_path(location) if normalize_paths

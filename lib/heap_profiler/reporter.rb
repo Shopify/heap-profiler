@@ -2,7 +2,6 @@
 
 module HeapProfiler
   class << self
-
     # This works around a Ruby bug present until at least 2.7.1
     # ObjectSpace.dump include module and class names in the dump
     # and for anonymous modules and classes this mean naming them.
@@ -16,11 +15,10 @@ module HeapProfiler
       def name_anonymous_modules!
         ObjectSpace.each_object(Module) do |mod|
           next if mod.singleton_class?
-          unless real_mod_name(mod)
-            # We have to assign it at the top level to avoid allocating a string for the name
-            ::Object.const_set(:AnonymousClassOrModule, mod)
-            ::Object.send(:remove_const, :AnonymousClassOrModule)
-          end
+          next if real_mod_name(mod)
+          # We have to assign it at the top level to avoid allocating a string for the name
+          ::Object.const_set(:AnonymousClassOrModule, mod)
+          ::Object.send(:remove_const, :AnonymousClassOrModule)
         end
       end
 
