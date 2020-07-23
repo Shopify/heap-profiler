@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module HeapProfiler
+  REPORT_SOURCE_PATH = __FILE__
+
   class << self
     # This works around a Ruby bug present until at least 2.7.1
     # ObjectSpace.dump include module and class names in the dump
