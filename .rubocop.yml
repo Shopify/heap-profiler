@@ -5,6 +5,7 @@ AllCops:
   Exclude:
     - bin/generate-report
     - vendor/bundle/**/*
+    - ext/**/*
 
 Style/MethodCallWithArgsParentheses:
   Enabled: false
