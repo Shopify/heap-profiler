@@ -3,90 +3,9 @@
 
 using namespace simdjson;
 
-static VALUE rb_eHeapProfilerError;
-
-static VALUE make_ruby_object(dom::element element)
-{
-    switch (element.type())
-    {
-    case dom::element_type::ARRAY:
-    {
-        VALUE ary = rb_ary_new();
-        for (dom::element x : element)
-        {
-            VALUE e = make_ruby_object(x);
-            rb_ary_push(ary, e);
-        }
-        return ary;
-    }
-    case dom::element_type::OBJECT:
-    {
-        VALUE hash = rb_hash_new();
-        for (dom::key_value_pair field : dom::object(element))
-        {
-            std::string_view view(field.key);
-            VALUE k = ID2SYM(rb_intern_str(rb_utf8_str_new(view.data(), view.size())));
-            VALUE v = make_ruby_object(field.value);
-            rb_hash_aset(hash, k, v);
-        }
-        return hash;
-    }
-    case dom::element_type::INT64:
-    {
-        return LONG2NUM(element.get<int64_t>());
-    }
-    case dom::element_type::UINT64:
-    {
-        return ULONG2NUM(element.get<uint64_t>());
-    }
-    case dom::element_type::DOUBLE:
-    {
-        return DBL2NUM(double(element));
-    }
-    case dom::element_type::STRING:
-    {
-        std::string_view view(element);
-        return rb_utf8_str_new(view.data(), view.size());
-    }
-    case dom::element_type::BOOL:
-    {
-        return bool(element) ? Qtrue : Qfalse;
-    }
-    case dom::element_type::NULL_VALUE:
-    {
-        return Qnil;
-    }
-    }
-    // unknown case (bug)
-    rb_raise(rb_eException, "[BUG] must not happen");
-}
-
-static VALUE rb_heap_load_many(VALUE self, VALUE arg, VALUE batch_size)
-{
-    Check_Type(arg, T_STRING);
-    Check_Type(batch_size, T_FIXNUM);
-
-    try
-    {
-        dom::parser parser;
-        auto [docs, error] = parser.load_many(RSTRING_PTR(arg), FIX2INT(batch_size));
-        if (error != SUCCESS)
-        {
-            rb_raise(rb_eHeapProfilerError, "%s", error_message(error));
-        }
-
-        for (dom::element doc : docs)
-        {
-            rb_yield(make_ruby_object(doc));
-        }
-
-        return Qnil;
-    }
-    catch (simdjson::simdjson_error error)
-    {
-        rb_raise(rb_eHeapProfilerError, "%s", error.what());
-    }
-}
+static VALUE rb_eHeapProfilerError, sym_type, sym_class, sym_address, sym_value,
+             sym_memsize, sym_imemo_type, sym_struct, sym_file, sym_line, sym_shared,
+             sym_references;
 
 const uint64_t digittoval[256] = {
      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -126,8 +45,8 @@ static inline uint64_t parse_address(const char * address) {
 
 static inline int64_t parse_address(dom::element element) {
     std::string_view address;
-    if (auto error = element.get(address)) {
-        rb_raise(rb_eHeapProfilerError, "parse_address: %s", error_message(error));
+    if (element.get(address)) {
+        return 0; // ROOT object
     }
     assert(address.size() == 14);
     return parse_address(address.data());
@@ -187,8 +106,117 @@ static VALUE rb_heap_parse_address(VALUE self, VALUE address) {
     return INT2FIX(parse_address(RSTRING_PTR(address)));
 }
 
+static VALUE make_ruby_object(dom::object object)
+{
+    VALUE hash = rb_hash_new();
+
+    std::string_view type;
+    if (!object["type"].get(type)) {
+        rb_hash_aset(hash, sym_type, rb_utf8_str_new(type.data(), type.size()));
+    }
+
+    std::string_view address;
+    if (!object["address"].get(address)) {
+        rb_hash_aset(hash, sym_address, INT2FIX(parse_address(address.data())));
+    }
+
+    std::string_view _class;
+    if (!object["class"].get(_class)) {
+        rb_hash_aset(hash, sym_class, INT2FIX(parse_address(_class.data())));
+    }
+
+    uint64_t memsize;
+    if (!object["memsize"].get(memsize)) {
+        rb_hash_aset(hash, sym_memsize, INT2FIX(memsize));
+    }
+
+    if (type == "IMEMO") {
+        std::string_view imemo_type;
+        if (!object["imemo_type"].get(imemo_type)) {
+            rb_hash_aset(hash, sym_imemo_type, rb_utf8_str_new(imemo_type.data(), imemo_type.size()));
+        }
+    } else if (type == "DATA") {
+        std::string_view _struct;
+        if (!object["struct"].get(_struct)) {
+            rb_hash_aset(hash, sym_struct, rb_utf8_str_new(_struct.data(), _struct.size()));
+        }
+    } else if (type == "STRING") {
+        std::string_view value;
+        if (!object["value"].get(value)) {
+            rb_hash_aset(hash, sym_value, rb_utf8_str_new(value.data(), value.size()));
+        }
+
+        bool shared;
+        if (!object["shared"].get(shared)) {
+            rb_hash_aset(hash, sym_shared, shared ? Qtrue : Qnil);
+            if (shared) {
+                VALUE references = rb_ary_new();
+                dom::array reference_elements(object["references"]);
+                for (dom::element reference_element : reference_elements) {
+                    std::string_view reference;
+                    if (!reference_element.get(reference)) {
+                        rb_ary_push(references, INT2FIX(parse_address(reference.data())));
+                    }
+                }
+                rb_hash_aset(hash, sym_references, references);
+            }
+        }
+    }
+
+    std::string_view file;
+    if (!object["file"].get(file)) {
+        rb_hash_aset(hash, sym_file, rb_utf8_str_new(file.data(), file.size()));
+    }
+
+    uint64_t line;
+    if (!object["line"].get(line)) {
+        rb_hash_aset(hash, sym_line, INT2FIX(line));
+    }
+
+    return hash;
+}
+
+static VALUE rb_heap_load_many(VALUE self, VALUE arg, VALUE batch_size)
+{
+    Check_Type(arg, T_STRING);
+    Check_Type(batch_size, T_FIXNUM);
+
+    try
+    {
+        dom::parser parser;
+        auto [docs, error] = parser.load_many(RSTRING_PTR(arg), FIX2INT(batch_size));
+        if (error != SUCCESS)
+        {
+            rb_raise(rb_eHeapProfilerError, "%s", error_message(error));
+        }
+
+        for (dom::element doc : docs)
+        {
+            rb_yield(make_ruby_object(doc));
+        }
+
+        return Qnil;
+    }
+    catch (simdjson::simdjson_error error)
+    {
+        rb_raise(rb_eHeapProfilerError, "%s", error.what());
+    }
+}
+
 extern "C" {
     void Init_heap_profiler(void) {
+        sym_type = ID2SYM(rb_intern("type"));
+        sym_class = ID2SYM(rb_intern("class"));
+        sym_address = ID2SYM(rb_intern("address"));
+        sym_value = ID2SYM(rb_intern("value"));
+        sym_memsize = ID2SYM(rb_intern("memsize"));
+        sym_struct = ID2SYM(rb_intern("struct"));
+        sym_imemo_type = ID2SYM(rb_intern("imemo_type"));
+        sym_file = ID2SYM(rb_intern("file"));
+        sym_line = ID2SYM(rb_intern("line"));
+        sym_shared = ID2SYM(rb_intern("shared"));
+        sym_references = ID2SYM(rb_intern("references"));
+
         VALUE rb_mHeapProfiler = rb_const_get(rb_cObject, rb_intern("HeapProfiler"));
         VALUE rb_mHeapProfilerNative = rb_const_get(rb_mHeapProfiler, rb_intern("Native"));
 

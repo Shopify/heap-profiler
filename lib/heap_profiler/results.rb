@@ -70,7 +70,7 @@ module HeapProfiler
 
     def pretty_print(io = $stdout, **options)
       heap = Dump.new(@path)
-      index = Index.new(heap).build!
+      index = Index.new(heap)
 
       color_output = options.fetch(:color_output) { io.respond_to?(:isatty) && io.isatty }
       @colorize = color_output ? Polychrome : Monochrome
@@ -142,7 +142,7 @@ module HeapProfiler
     def pretty_print(io = $stdout, **options)
       diff = Diff.new(@directory)
       heaps = @types.to_h { |t| [t, diff.public_send("#{t}_diff")] }
-      index = Index.new(diff.allocated).build!
+      index = Index.new(diff.allocated)
 
       color_output = options.fetch(:color_output) { io.respond_to?(:isatty) && io.isatty }
       @colorize = color_output ? Polychrome : Monochrome

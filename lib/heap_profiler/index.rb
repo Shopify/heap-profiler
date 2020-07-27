@@ -49,7 +49,7 @@ module HeapProfiler
         class_address = object[:class]
         return unless class_address
 
-        return @classes.fetch(cast_address(class_address)) do
+        return @classes.fetch(class_address) do
           $stderr.puts("WARNING: Couldn't infer class name of: #{object.inspect}")
           nil
         end
