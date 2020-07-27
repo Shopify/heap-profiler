@@ -63,7 +63,7 @@ module HeapProfiler
     end
 
     def each_object(&block)
-      FastJsonparser.load_many(path, batch_size: 10_000_000, &block)
+      Native.load_many(path, batch_size: 10_000_000, &block)
     end
 
     def stats
