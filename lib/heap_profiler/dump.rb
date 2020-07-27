@@ -75,11 +75,7 @@ module HeapProfiler
     end
 
     def index
-      @index ||= Set.new.tap do |index|
-        each_line_with_address do |_line, address|
-          index << address
-        end
-      end
+      @index ||= Native.addresses_set(path)
     end
 
     def each_line_with_address

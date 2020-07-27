@@ -100,6 +100,34 @@ static VALUE rb_heap_build_index(VALUE self, VALUE path, VALUE batch_size) {
     return return_value;
 }
 
+static VALUE rb_heap_addresses_list(VALUE self, VALUE path, VALUE batch_size) {
+    Check_Type(path, T_STRING);
+    Check_Type(batch_size, T_FIXNUM);
+
+    VALUE addresses = rb_hash_new();
+
+    try {
+        dom::parser parser;
+        auto [objects, error] = parser.load_many(RSTRING_PTR(path), FIX2INT(batch_size));
+        if (error != SUCCESS) {
+            rb_raise(rb_eHeapProfilerError, "%s", error_message(error));
+        }
+
+        for (dom::object object : objects) {
+            std::string_view address;
+            if (!object["address"].get(address)) {
+                rb_hash_aset(addresses, INT2FIX(parse_address(address.data())), Qtrue);
+            }
+        }
+    }
+    catch (simdjson::simdjson_error error)
+    {
+        rb_raise(rb_eHeapProfilerError, "exc: %s", error.what());
+    }
+
+    return addresses;
+}
+
 static VALUE rb_heap_parse_address(VALUE self, VALUE address) {
     Check_Type(address, T_STRING);
     assert(RSTRING_LEN(address) == 14);
@@ -226,5 +254,6 @@ extern "C" {
         rb_define_module_function(rb_mHeapProfilerNative, "_build_index", reinterpret_cast<VALUE (*)(...)>(rb_heap_build_index), 2);
         rb_define_module_function(rb_mHeapProfilerNative, "parse_address", reinterpret_cast<VALUE (*)(...)>(rb_heap_parse_address), 1);
         rb_define_module_function(rb_mHeapProfilerNative, "_load_many", reinterpret_cast<VALUE (*)(...)>(rb_heap_load_many), 2);
+        rb_define_module_function(rb_mHeapProfilerNative, "_addresses_list", reinterpret_cast<VALUE (*)(...)>(rb_heap_addresses_list), 2);
     }
 }
