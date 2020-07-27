@@ -11,17 +11,7 @@ module HeapProfiler
     end
 
     def build!
-      @heap.each_object do |object|
-        case object[:type]
-        when 'MODULE', 'CLASS'
-          @classes[cast_address(object[:address])] = object[:name]
-        when 'STRING'
-          next if object[:shared]
-          if (value = object[:value])
-            @strings[cast_address(object[:address])] = value
-          end
-        end
-      end
+      @classes, @strings = Native.build_index(@heap.path)
       self
     end
 

@@ -27,5 +27,7 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
+  spec.extensions << "ext/heap_profiler/extconf.rb"
+
   spec.add_dependency "fast_jsonparser", "~> 0.4"
 end
