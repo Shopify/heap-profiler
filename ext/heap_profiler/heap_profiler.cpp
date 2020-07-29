@@ -7,6 +7,8 @@ static VALUE rb_eHeapProfilerError, sym_type, sym_class, sym_address, sym_value,
              sym_memsize, sym_imemo_type, sym_struct, sym_file, sym_line, sym_shared,
              sym_references;
 
+static dom::parser parser;
+
 const uint64_t digittoval[256] = {
      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -60,7 +62,6 @@ static VALUE rb_heap_build_index(VALUE self, VALUE path, VALUE batch_size) {
     VALUE class_index = rb_hash_new();
 
     try {
-        dom::parser parser;
         auto [objects, error] = parser.load_many(RSTRING_PTR(path), FIX2INT(batch_size));
         if (error != SUCCESS) {
             rb_raise(rb_eHeapProfilerError, "%s", error_message(error));
@@ -107,7 +108,6 @@ static VALUE rb_heap_addresses_list(VALUE self, VALUE path, VALUE batch_size) {
     VALUE addresses = rb_hash_new();
 
     try {
-        dom::parser parser;
         auto [objects, error] = parser.load_many(RSTRING_PTR(path), FIX2INT(batch_size));
         if (error != SUCCESS) {
             rb_raise(rb_eHeapProfilerError, "%s", error_message(error));
@@ -211,7 +211,6 @@ static VALUE rb_heap_load_many(VALUE self, VALUE arg, VALUE batch_size)
 
     try
     {
-        dom::parser parser;
         auto [docs, error] = parser.load_many(RSTRING_PTR(arg), FIX2INT(batch_size));
         if (error != SUCCESS)
         {
