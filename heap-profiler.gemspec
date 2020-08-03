@@ -8,10 +8,10 @@ Gem::Specification.new do |spec|
   spec.email         = ["jean.boussier@gmail.com"]
 
   spec.summary       = 'Ruby heap profiling tool'
-  spec.description   = 'Make several heap dumps and summarize allocated, retentained and freeed memory'
+  spec.description   = 'Make several heap dumps and summarize allocated, retained memory'
   spec.homepage      = "https://github.com/Shopify/heap-profiler"
   spec.license       = "MIT"
-  spec.required_ruby_version = Gem::Requirement.new(">= 2.5.0")
+  spec.required_ruby_version = Gem::Requirement.new(">= 2.6.0")
 
   spec.metadata["allowed_push_host"] = "https://rubygems.org/"
 

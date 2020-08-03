@@ -12,7 +12,7 @@ jobs:
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '2.7'
+          ruby-version: '2.6'
       - name: Ruby gem cache
         uses: actions/cache@v1
         with:
@@ -30,8 +30,11 @@ jobs:
           bin/rubocop -c .rubocop.yml
 
   tests:
-    name: Tests
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby: [ '2.6', '2.7' ]
+    name: Ruby ${{ matrix.ruby }} Tests
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -39,14 +42,14 @@ jobs:
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '2.7'
+          ruby-version: ${{ matrix.ruby }}
       - name: Ruby gem cache
         uses: actions/cache@v1
         with:
           path: vendor/bundle
-          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+          key: ${{ runner.os }}-${{ matrix.ruby }}-gems-${{ hashFiles('**/Gemfile.lock') }}
           restore-keys: |
-            ${{ runner.os }}-gems-
+            ${{ runner.os }}-${{ matrix.ruby }}-gems-
       - name: Install gems
         run: |
           bundle config path vendor/bundle
