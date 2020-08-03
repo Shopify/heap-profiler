@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "set"
-
 require "heap_profiler/runtime"
 require "heap_profiler/native"
 require "heap_profiler/dump"

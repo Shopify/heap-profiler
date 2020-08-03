@@ -8,12 +8,12 @@ module HeapProfiler
         _build_index(path, batch_size)
       end
 
-      def addresses_set(path, batch_size: DEFAULT_BATCH_SIZE)
-        _addresses_list(path, batch_size)
-      end
-
       def load_many(path, batch_size: DEFAULT_BATCH_SIZE, &block)
         _load_many(path, batch_size, &block)
+      end
+
+      def filter_heap(source_path, destination_path, since:)
+        _filter_heap(source_path, destination_path, since)
       end
 
       def ruby_build_index(path)
@@ -37,17 +37,6 @@ module HeapProfiler
         end
 
         [classes_index, strings_index]
-      end
-
-      def ruby_addresses_set(path)
-        index = Set.new
-        File.open(path).each_line do |line|
-          # This is a cheap, hacky extraction of addresses.
-          # So far it seems to work on 2.7.1 but that might not hold true on all versions.
-          # Also the root objects don't have an address, but that's fine
-          index << line.byteslice(14, 12).to_i(16)
-        end
-        index
       end
 
       def ruby_parse_address(address)

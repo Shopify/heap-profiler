@@ -1,3 +1,0 @@
-{"address":"0x7f9222231610", "type":"ARRAY", "class":"0x7f921e89b2c0", "length":2, "embedded":true, "references":["0x7f92222317c8", "0x7f92222316d8"], "memsize":40, "flags":{"wb_protected":true, "old":true, "uncollectible":true, "marked":true}}
-{"address":"0x7f92222316d8", "type":"STRING", "class":"0x7f921e8bb598", "embedded":true, "bytesize":13, "value":"i am free too", "encoding":"UTF-8", "memsize":40, "flags":{"wb_protected":true, "old":true, "uncollectible":true, "marked":true}}
-{"address":"0x7f92222317c8", "type":"STRING", "class":"0x7f921e8bb598", "embedded":true, "bytesize":9, "value":"i am free", "encoding":"UTF-8", "memsize":40, "flags":{"wb_protected":true, "old":true, "uncollectible":true, "marked":true}}
