@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 module HeapProfiler
-  REPORT_SOURCE_PATH = __FILE__
-
   class << self
     # This works around a Ruby bug present until at least 2.7.1
     # ObjectSpace.dump include module and class names in the dump
@@ -38,13 +36,13 @@ module HeapProfiler
     def initialize(dir_path)
       @dir_path = dir_path
       @enable_tracing = !allocation_tracing_enabled?
+      @generation = nil
     end
 
     def start
       FileUtils.mkdir_p(@dir_path)
       ObjectSpace.trace_object_allocations_start if @enable_tracing
 
-      @baseline_heap = open_heap("baseline")
       @allocated_heap = open_heap("allocated")
       @retained_heap = open_heap("retained")
 
@@ -52,7 +50,7 @@ module HeapProfiler
 
       4.times { GC.start }
       GC.disable
-      dump_heap(@baseline_heap)
+      @generation = GC.count
     end
 
     def stop
@@ -62,9 +60,9 @@ module HeapProfiler
       GC.enable
       4.times { GC.start }
       dump_heap(@retained_heap)
-      @baseline_heap.close
       @allocated_heap.close
       @retained_heap.close
+      write_info("generation", @generation.to_s)
     end
 
     def run
@@ -82,10 +80,21 @@ module HeapProfiler
 
     private
 
-    def dump_heap(file)
-      ObjectSpace.dump_all(output: file)
-      file.close
+    def write_info(key, value)
+      File.write(File.join(@dir_path, "#{key}.info"), value)
     end
+
+    # ObjectSpace.dump_all does allocate a few objects in itself (https://bugs.ruby-lang.org/issues/17045)
+    # because of this even en empty block of code will report a handful of allocations.
+    # To filter them more easily we attribute call `dump_all` from a method with a very specific `file`
+    # property.
+    class_eval <<~RUBY, '__hprof', __LINE__
+      # frozen_string_literal: true
+      def dump_heap(file)
+        ObjectSpace.dump_all(output: file)
+        file.close
+      end
+    RUBY
 
     def open_heap(name)
       File.open(File.join(@dir_path, "#{name}.heap"), 'w+')

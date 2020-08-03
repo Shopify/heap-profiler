@@ -130,7 +130,7 @@ module HeapProfiler
   end
 
   class DiffResults < AbstractResults
-    TYPES = ["allocated", "retained", "freed"].freeze
+    TYPES = ["allocated", "retained"].freeze
 
     def initialize(directory, types = TYPES, metrics = METRICS, groupings = GROUPINGS)
       @directory = directory

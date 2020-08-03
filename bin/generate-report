@@ -13,18 +13,22 @@ dir = ARGV.first
 FileUtils.mkdir_p(dir)
 FileUtils.rm_rf(Dir[File.join(dir, '*')])
 
-HeapProfiler.report(dir) do
-  $retained_objects = [
-    +"I am retained",
-    +"I am retained",
-    +"I am retained too",
-    SomeCustomStuff.new,
-  ]
-  "I am a very very long string " * 4
-  [
-    +"I am allocated",
-    +"I am allocated too",
-  ]
-  $freed_objects = nil
-  Struct.new("foo".to_sym, :bar)
+if ARGV[1] == '--empty'
+  HeapProfiler.report(dir) {}
+else
+  HeapProfiler.report(dir) do
+    $retained_objects = [
+      +"I am retained",
+      +"I am retained",
+      +"I am retained too",
+      SomeCustomStuff.new,
+    ]
+    "I am a very very long string " * 4
+    [
+      +"I am allocated",
+      +"I am allocated too",
+    ]
+    $freed_objects = nil
+    Struct.new("foo".to_sym, :bar)
+  end
 end

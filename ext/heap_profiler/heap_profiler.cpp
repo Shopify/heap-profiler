@@ -1,5 +1,6 @@
 #include "ruby.h"
 #include "simdjson.h"
+#include <fstream>
 
 using namespace simdjson;
 
@@ -99,33 +100,6 @@ static VALUE rb_heap_build_index(VALUE self, VALUE path, VALUE batch_size) {
     rb_ary_push(return_value, class_index);
     rb_ary_push(return_value, string_index);
     return return_value;
-}
-
-static VALUE rb_heap_addresses_list(VALUE self, VALUE path, VALUE batch_size) {
-    Check_Type(path, T_STRING);
-    Check_Type(batch_size, T_FIXNUM);
-
-    VALUE addresses = rb_hash_new();
-
-    try {
-        auto [objects, error] = parser.load_many(RSTRING_PTR(path), FIX2INT(batch_size));
-        if (error != SUCCESS) {
-            rb_raise(rb_eHeapProfilerError, "%s", error_message(error));
-        }
-
-        for (dom::object object : objects) {
-            std::string_view address;
-            if (!object["address"].get(address)) {
-                rb_hash_aset(addresses, INT2FIX(parse_address(address.data())), Qtrue);
-            }
-        }
-    }
-    catch (simdjson::simdjson_error error)
-    {
-        rb_raise(rb_eHeapProfilerError, "exc: %s", error.what());
-    }
-
-    return addresses;
 }
 
 static VALUE rb_heap_parse_address(VALUE self, VALUE address) {
@@ -230,6 +204,36 @@ static VALUE rb_heap_load_many(VALUE self, VALUE arg, VALUE batch_size)
     }
 }
 
+static VALUE rb_heap_filter(VALUE self, VALUE source_path, VALUE destination_path, VALUE _generation)
+{
+    Check_Type(source_path, T_STRING);
+    Check_Type(destination_path, T_STRING);
+    Check_Type(_generation, T_FIXNUM);
+    int64_t generation = FIX2INT(_generation);
+
+    std::ifstream input(RSTRING_PTR(source_path));
+    std::ofstream output(RSTRING_PTR(destination_path), std::ofstream::out);
+    int count = 0;
+    for (std::string line; getline( input, line );) {
+        int64_t object_generation;
+        dom::element object = parser.parse(line);
+        if (object["generation"].get(object_generation) || object_generation < generation) {
+            continue;
+        }
+
+        std::string_view file;
+        if (!object["file"].get(file) && file == "__hprof") {
+            continue;
+        }
+
+        count += 1;
+        output << line << std::endl;
+    }
+
+    output.close();
+    return INT2FIX(count);
+}
+
 extern "C" {
     void Init_heap_profiler(void) {
         sym_type = ID2SYM(rb_intern("type"));
@@ -253,6 +257,6 @@ extern "C" {
         rb_define_module_function(rb_mHeapProfilerNative, "_build_index", reinterpret_cast<VALUE (*)(...)>(rb_heap_build_index), 2);
         rb_define_module_function(rb_mHeapProfilerNative, "parse_address", reinterpret_cast<VALUE (*)(...)>(rb_heap_parse_address), 1);
         rb_define_module_function(rb_mHeapProfilerNative, "_load_many", reinterpret_cast<VALUE (*)(...)>(rb_heap_load_many), 2);
-        rb_define_module_function(rb_mHeapProfilerNative, "_addresses_list", reinterpret_cast<VALUE (*)(...)>(rb_heap_addresses_list), 2);
+        rb_define_module_function(rb_mHeapProfilerNative, "_filter_heap", reinterpret_cast<VALUE (*)(...)>(rb_heap_filter), 3);
     }
 }

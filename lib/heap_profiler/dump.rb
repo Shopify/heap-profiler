@@ -55,11 +55,14 @@ module HeapProfiler
     # After 2.7, it only allocate a couple hashes, a file etc.
     #
     # Either way we need to exclude them from the reports
-    REPORTER_LINE = %{"file":"#{REPORT_SOURCE_PATH}"}
     def diff(other, file)
       each_line_with_address do |line, address|
-        file << line unless other.index.include?(address) || line.include?(REPORTER_LINE)
+        file << line unless other.index.include?(address)
       end
+    end
+
+    def filter(as, since:)
+      Native.filter_heap(path, as, since: since)
     end
 
     def each_object(&block)
