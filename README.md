@@ -1,6 +1,10 @@
 # HeapProfiler
 
-TODO: Describe your gem
+A memory profiler for Ruby
+
+## Requirements
+
+Ruby(MRI) Version 2.6 and above.
 
 ## Installation
 
@@ -22,7 +26,7 @@ Or install it yourself as:
 
 ### Profiling Mode
 
-HeapProfiler can be used to mesure memory allocations and retentions of a Ruby code snippet.
+HeapProfiler can be used to measure memory allocations and retentions of a Ruby code snippet.
 
 To record a profile:
 
@@ -33,7 +37,9 @@ HeapProfiler.report('path/to/report/directory') do
 end
 ```
 
-To then analyse the profile
+To then analyse the profile, run the `heap-profiler` command against the directory you specified.
+Note that on large applications this can take a while, but if you are profiling a production
+application, you can download the profile directory and do the analysis on another machine.
 
 ```bash
 $ heap-profiler path/to/report/directory
@@ -230,6 +236,17 @@ Then run `heap-profiler` against it:
 ```bash
 heap-profiler path/to/file.heap
 ```
+
+## How is it different from memory_profiler?
+
+`heap-profiler` is heavilly inspired of `memory_profiler`, it aims at being as similar as possible.
+However it uses a different Ruby API to gather data.
+
+`memory_profiler` uses [`ObjectSpace.each_object`](https://ruby-doc.org/core-2.7.1/ObjectSpace.html#method-c-each_object) which contrary to what its name
+suggest doesn't expose all existing object. There are many objects that the Ruby VM consider "internal" (see MRI's `internal_object_p(VALUE)`) and won't yield to `each_object`.
+
+On the other hand `heap-profiler` uses [`ObjectSpace.dump_all`](https://ruby-doc.org/stdlib-2.7.1/libdoc/objspace/rdoc/ObjectSpace.html#method-c-dump_all), which
+does serialize every objects, including internal ones, into JSON files. This leads to more exhaustive reports.
 
 ## Development
 
