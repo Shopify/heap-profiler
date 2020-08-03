@@ -11,11 +11,11 @@ module HeapProfiler
 
     def test_class_index
       class_index, _ = Native.build_index(fixtures_path('diffed-heap/allocated.heap'))
-      assert_equal 1127, class_index.size
-      assert_equal "FileUtils", class_index[140265615232320]
+      assert_equal 1271, class_index.size
+      assert_equal "HeapProfiler::Error", class_index[0x7f95860b3e98]
 
       ruby_class_index, _ = Native.ruby_build_index(fixtures_path('diffed-heap/allocated.heap'))
-      assert_equal 1127, ruby_class_index.size
+      assert_equal 1271, ruby_class_index.size
       assert_equal [], ruby_class_index.values - class_index.values
       assert_equal [], class_index.values - ruby_class_index.values
       assert_equal ruby_class_index, class_index
@@ -23,11 +23,11 @@ module HeapProfiler
 
     def test_string_index
       _, string_index = Native.build_index(fixtures_path('diffed-heap/allocated.heap'))
-      assert_equal 25712, string_index.size
-      assert_equal "payload", string_index[140265553723440]
+      assert_equal 27251, string_index.size
+      assert_equal "HTTP server toolkit", string_index[0x7f95898b46a8]
 
       _, ruby_string_index = Native.ruby_build_index(fixtures_path('diffed-heap/allocated.heap'))
-      assert_equal 25712, ruby_string_index.size
+      assert_equal 27251, ruby_string_index.size
       assert_equal [], ruby_string_index.values - string_index.values
       assert_equal [], string_index.values - ruby_string_index.values
       assert_equal ruby_string_index, string_index
