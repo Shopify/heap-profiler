@@ -48,10 +48,15 @@ module HeapProfiler
       end
 
       def top_n(max)
-        stats.sort do |a, b|
+        values = stats.sort do |a, b|
+          b[1] <=> a[1]
+        end
+        top = values.take(max)
+        top.sort! do |a, b|
           cmp = b[1] <=> a[1]
           cmp == 0 ? b[0] <=> a[0] : cmp
-        end.take(max)
+        end
+        top
       end
     end
 
@@ -112,10 +117,14 @@ module HeapProfiler
       def top_n(max)
         values = @stats.values
         values.sort! do |a, b|
+          b.count <=> a.count
+        end
+        top = values.take(max)
+        top.sort! do |a, b|
           cmp = b.count <=> a.count
           cmp == 0 ? b.value <=> a.value : cmp
         end
-        values.take(max)
+        top
       end
     end
 
