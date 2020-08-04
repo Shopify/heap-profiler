@@ -71,7 +71,8 @@ module HeapProfiler
       address.to_s.to_i(16)
     end
 
-    def guess_gem(path)
+    def guess_gem(object)
+      path = object[:file]
       @gems[path] ||=
         if %r{(/gems/.*)*/gems/(?<gemname>[^/]+)} =~ path
           gemname

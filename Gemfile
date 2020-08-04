@@ -10,3 +10,4 @@ gem "minitest", "~> 5.0"
 gem "byebug"
 gem "rubocop-shopify", require: false
 gem "benchmark-ips"
+gem "stackprof"

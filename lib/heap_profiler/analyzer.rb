@@ -17,27 +17,31 @@ module HeapProfiler
       def process(_index, object)
         @stats += @metric.call(object)
       end
-
-      def sort!
-      end
     end
 
     class GroupedDimension < Dimension
-      GROUPINGS = {
-        "file" => -> (_index, object) { object[:file] },
-        "location" => -> (_index, object) do
-          if (file = object[:file]) && (line = object[:line])
-            "#{file}:#{line}"
-          end
-        end,
-        "gem" => -> (index, object) { index.guess_gem(object[:file]) },
-        "class" => -> (index, object) { index.guess_class(object) },
-      }.freeze
-
       attr_reader :stats
-      def initialize(metric, grouping)
+
+      class << self
+        def build(metric, grouping)
+          klass = case grouping
+          when "file"
+            FileGroupDimension
+          when "location"
+            LocationGroupDimension
+          when "gem"
+            GemGroupDimension
+          when "class"
+            ClassGroupDimension
+          else
+            raise "Unknown grouping key: #{grouping.inspect}"
+          end
+          klass.new(metric)
+        end
+      end
+
+      def initialize(metric)
         super(metric)
-        @grouping = GROUPINGS.fetch(grouping)
         @stats = Hash.new { |h, k| h[k] = 0 }
       end
 
@@ -57,6 +61,41 @@ module HeapProfiler
           cmp == 0 ? b[0] <=> a[0] : cmp
         end
         top
+      end
+    end
+
+    class FileGroupDimension < GroupedDimension
+      def process(_index, object)
+        if (group = object[:file])
+          @stats[group] += @metric.call(object)
+        end
+      end
+    end
+
+    class LocationGroupDimension < GroupedDimension
+      def process(_index, object)
+        file = object[:file]
+        line = object[:line]
+
+        if file && line
+          @stats["#{file}:#{line}"] += @metric.call(object)
+        end
+      end
+    end
+
+    class GemGroupDimension < GroupedDimension
+      def process(index, object)
+        if (group = index.guess_gem(object))
+          @stats[group] += @metric.call(object)
+        end
+      end
+    end
+
+    class ClassGroupDimension < GroupedDimension
+      def process(index, object)
+        if (group = index.guess_class(object))
+          @stats[group] += @metric.call(object)
+        end
       end
     end
 
@@ -141,7 +180,7 @@ module HeapProfiler
         else
           dimensions["total_#{metric}"] = Dimension.new(metric)
           groupings.each do |grouping|
-            dimensions["#{metric}_by_#{grouping}"] = GroupedDimension.new(metric, grouping)
+            dimensions["#{metric}_by_#{grouping}"] = GroupedDimension.build(metric, grouping)
           end
         end
       end

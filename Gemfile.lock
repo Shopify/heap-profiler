@@ -33,6 +33,7 @@ GEM
     rubocop-shopify (1.0.4)
       rubocop (>= 0.85, < 0.87)
     ruby-progressbar (1.10.1)
+    stackprof (0.2.15)
     unicode-display_width (1.7.0)
 
 PLATFORMS
@@ -46,6 +47,7 @@ DEPENDENCIES
   rake
   rake-compiler
   rubocop-shopify
+  stackprof
 
 BUNDLED WITH
    2.1.4
