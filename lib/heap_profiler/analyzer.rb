@@ -147,7 +147,7 @@ module HeapProfiler
       end
 
       def process(_index, object)
-        return unless object[:type] == "STRING"
+        return unless object[:type] == :STRING
         value = object[:value]
         return unless value # broken strings etc
         @stats[value].process(object)

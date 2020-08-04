@@ -114,7 +114,7 @@ static VALUE make_ruby_object(dom::object object)
 
     std::string_view type;
     if (!object["type"].get(type)) {
-        rb_hash_aset(hash, sym_type, rb_utf8_str_new(type.data(), type.size()));
+        rb_hash_aset(hash, sym_type, ID2SYM(rb_intern2(type.data(), type.size())));
     }
 
     std::string_view address;
@@ -135,12 +135,12 @@ static VALUE make_ruby_object(dom::object object)
     if (type == "IMEMO") {
         std::string_view imemo_type;
         if (!object["imemo_type"].get(imemo_type)) {
-            rb_hash_aset(hash, sym_imemo_type, rb_utf8_str_new(imemo_type.data(), imemo_type.size()));
+            rb_hash_aset(hash, sym_imemo_type, ID2SYM(rb_intern2(imemo_type.data(), imemo_type.size())));
         }
     } else if (type == "DATA") {
         std::string_view _struct;
         if (!object["struct"].get(_struct)) {
-            rb_hash_aset(hash, sym_struct, rb_utf8_str_new(_struct.data(), _struct.size()));
+            rb_hash_aset(hash, sym_struct, ID2SYM(rb_intern2(_struct.data(), _struct.size())));
         }
     } else if (type == "STRING") {
         std::string_view value;

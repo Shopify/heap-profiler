@@ -16,21 +16,21 @@ module HeapProfiler
     end
 
     BUILTIN_CLASSES = {
-      "FILE" => "File",
-      "ICLASS" => "ICLASS",
-      "COMPLEX" => "Complex",
-      "RATIONAL" => "Rational",
-      "BIGNUM" => "Bignum",
-      "FLOAT" => "Float",
-      "ARRAY" => "Array",
-      "STRING" => "String",
-      "HASH" => "Hash",
-      "SYMBOL" => "Symbol",
-      "MODULE" => "Module",
-      "CLASS" => "Class",
-      "REGEXP" => "Regexp",
-      "MATCH" => "MatchData",
-      "ROOT" => "<VM Root>",
+      FILE: "File",
+      ICLASS: "ICLASS",
+      COMPLEX: "Complex",
+      RATIONAL: "Rational",
+      BIGNUM: "Bignum",
+      FLOAT: "Float",
+      ARRAY: "Array",
+      STRING: "String",
+      HASH: "Hash",
+      SYMBOL: "Symbol",
+      MODULE: "Module",
+      CLASS: "Class",
+      REGEXP: "Regexp",
+      MATCH: "MatchData",
+      ROOT: "<VM Root>",
     }.freeze
 
     IMEMO_TYPES = Hash.new { |h, k| h[k] = "<#{k || 'unknown'}> (IMEMO)" }
@@ -42,10 +42,10 @@ module HeapProfiler
         return class_name
       end
 
-      return IMEMO_TYPES[object[:imemo_type]] if type == 'IMEMO'
-      return DATA_TYPES[object[:struct]] if type == 'DATA'
+      return IMEMO_TYPES[object[:imemo_type]] if type == :IMEMO
+      return DATA_TYPES[object[:struct]] if type == :DATA
 
-      if type == "OBJECT" || type == "STRUCT"
+      if type == :OBJECT || type == :STRUCT
         class_address = object[:class]
         return unless class_address
 
@@ -63,12 +63,8 @@ module HeapProfiler
       return value if value
 
       if object[:shared]
-        @strings[cast_address(object[:references].first)]
+        @strings[Native.parse_address(object[:references].first)]
       end
-    end
-
-    def cast_address(address)
-      address.to_s.to_i(16)
     end
 
     def guess_gem(object)
