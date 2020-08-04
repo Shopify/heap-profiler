@@ -2,6 +2,17 @@
 
 module HeapProfiler
   class Diff
+    class DumpSubset
+      def initialize(path, generation)
+        @path = path
+        @generation = generation
+      end
+
+      def each_object(&block)
+        Parser.load_many(@path, since: @generation, &block)
+      end
+    end
+
     attr_reader :allocated
 
     def initialize(report_directory)
@@ -11,22 +22,14 @@ module HeapProfiler
     end
 
     def allocated_diff
-      @allocated_diff ||= build_diff('allocated-diff', @allocated)
+      @allocated_diff ||= DumpSubset.new(@allocated.path, @generation)
     end
 
     def retained_diff
-      @retained_diff ||= build_diff('retained-diff', open_dump('retained'))
+      @retained_diff ||= DumpSubset.new(open_dump('retained').path, @generation)
     end
 
     private
-
-    def build_diff(name, base)
-      diff = open_dump(name)
-      unless diff.exist?
-        base.filter(File.join(@report_directory, "#{name}.heap"), since: @generation)
-      end
-      diff
-    end
 
     def open_dump(name)
       Dump.open(@report_directory, name)

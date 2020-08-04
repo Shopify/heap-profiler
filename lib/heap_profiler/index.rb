@@ -11,7 +11,7 @@ module HeapProfiler
     end
 
     def build!
-      @classes, @strings = Native.build_index(@heap.path)
+      @classes, @strings = Parser.build_index(@heap.path)
       self
     end
 
