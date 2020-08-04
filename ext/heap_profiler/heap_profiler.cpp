@@ -128,7 +128,10 @@ static VALUE make_ruby_object(dom::object object)
     }
 
     uint64_t memsize;
-    if (!object["memsize"].get(memsize)) {
+    if (object["memsize"].get(memsize)) {
+        // ROOT object
+        rb_hash_aset(hash, sym_memsize, INT2FIX(0));
+    } else {
         rb_hash_aset(hash, sym_memsize, INT2FIX(memsize));
     }
 

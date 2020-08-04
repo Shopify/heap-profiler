@@ -78,8 +78,8 @@ module HeapProfiler
       analyzer = Analyzer.new(heap, index)
       dimensions = analyzer.run(@metrics, @groupings)
 
-      io.puts "Total: #{scale_bytes(dimensions['total_memory'].stats)} " \
-              "(#{dimensions['total_objects'].stats} objects)"
+      io.puts "Total: #{scale_bytes(dimensions['total'].memory)} " \
+              "(#{dimensions['total'].objects} objects)"
 
       @metrics.each do |metric|
         next if metric == "strings"
@@ -95,7 +95,7 @@ module HeapProfiler
 
     def dump_data(io, dimensions, metric, grouping, options)
       print_title io, "#{metric} by #{grouping}"
-      data = dimensions["#{metric}_by_#{grouping}"].top_n(options.fetch(:top, 50))
+      data = dimensions[grouping].top_n(metric, options.fetch(:top, 50))
 
       scale_data = metric == "memory" && options[:scale_bytes]
       normalize_paths = options[:normalize_paths]
@@ -154,8 +154,8 @@ module HeapProfiler
       end
 
       dimensions.each do |type, metrics|
-        io.puts "Total #{type}: #{scale_bytes(metrics['total_memory'].stats)} " \
-                "(#{metrics['total_objects'].stats} objects)"
+        io.puts "Total #{type}: #{scale_bytes(metrics['total'].memory)} " \
+                "(#{metrics['total'].objects} objects)"
       end
 
       @types.each do |type|
@@ -176,7 +176,7 @@ module HeapProfiler
 
     def dump_data(io, dimensions, type, metric, grouping, options)
       print_title io, "#{type} #{metric} by #{grouping}"
-      data = dimensions[type]["#{metric}_by_#{grouping}"].top_n(options.fetch(:top, 50))
+      data = dimensions[type][grouping].top_n(metric, options.fetch(:top, 50))
 
       scale_data = metric == "memory" && options[:scale_bytes]
       normalize_paths = options[:normalize_paths]

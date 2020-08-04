@@ -3,27 +3,35 @@
 module HeapProfiler
   class Analyzer
     class Dimension
-      METRICS = {
-        "objects" => -> (_object) { 1 },
-        "memory" => -> (object) { object[:memsize].to_i },
-      }.freeze
-
-      attr_reader :stats
-      def initialize(metric)
-        @stats = 0
-        @metric = METRICS.fetch(metric)
+      attr_reader :objects, :memory
+      def initialize
+        @objects = 0
+        @memory = 0
       end
 
       def process(_index, object)
-        @stats += @metric.call(object)
+        @objects += 1
+        unless object[:memsize]
+          p object
+        end
+        @memory += object[:memsize]
+      end
+
+      def stats(metric)
+        case metric
+        when "objects"
+          objects
+        when "memory"
+          memory
+        else
+          raise "Invalid metric: #{metric.inspect}"
+        end
       end
     end
 
     class GroupedDimension < Dimension
-      attr_reader :stats
-
       class << self
-        def build(metric, grouping)
+        def build(grouping)
           klass = case grouping
           when "file"
             FileGroupDimension
@@ -36,23 +44,24 @@ module HeapProfiler
           else
             raise "Unknown grouping key: #{grouping.inspect}"
           end
-          klass.new(metric)
+          klass.new
         end
       end
 
-      def initialize(metric)
-        super(metric)
-        @stats = Hash.new { |h, k| h[k] = 0 }
+      def initialize
+        @objects = Hash.new { |h, k| h[k] = 0 }
+        @memory = Hash.new { |h, k| h[k] = 0 }
       end
 
       def process(index, object)
         if (group = @grouping.call(index, object))
-          @stats[group] += @metric.call(object)
+          @objects[group] += 1
+          @memory[group] += object[:memsize]
         end
       end
 
-      def top_n(max)
-        values = stats.sort do |a, b|
+      def top_n(metric, max)
+        values = stats(metric).sort do |a, b|
           b[1] <=> a[1]
         end
         top = values.take(max)
@@ -67,7 +76,8 @@ module HeapProfiler
     class FileGroupDimension < GroupedDimension
       def process(_index, object)
         if (group = object[:file])
-          @stats[group] += @metric.call(object)
+          @objects[group] += 1
+          @memory[group] += object[:memsize]
         end
       end
     end
@@ -78,7 +88,9 @@ module HeapProfiler
         line = object[:line]
 
         if file && line
-          @stats["#{file}:#{line}"] += @metric.call(object)
+          group = "#{file}:#{line}"
+          @objects[group] += 1
+          @memory[group] += object[:memsize]
         end
       end
     end
@@ -86,7 +98,8 @@ module HeapProfiler
     class GemGroupDimension < GroupedDimension
       def process(index, object)
         if (group = index.guess_gem(object))
-          @stats[group] += @metric.call(object)
+          @objects[group] += 1
+          @memory[group] += object[:memsize]
         end
       end
     end
@@ -94,7 +107,8 @@ module HeapProfiler
     class ClassGroupDimension < GroupedDimension
       def process(index, object)
         if (group = index.guess_class(object))
-          @stats[group] += @metric.call(object)
+          @objects[group] += 1
+          @memory[group] += object[:memsize]
         end
       end
     end
@@ -178,9 +192,9 @@ module HeapProfiler
         if metric == "strings"
           dimensions["strings"] = StringDimension.new
         else
-          dimensions["total_#{metric}"] = Dimension.new(metric)
+          dimensions["total"] = Dimension.new
           groupings.each do |grouping|
-            dimensions["#{metric}_by_#{grouping}"] = GroupedDimension.build(metric, grouping)
+            dimensions[grouping] = GroupedDimension.build(grouping)
           end
         end
       end

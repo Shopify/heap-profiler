@@ -16,22 +16,22 @@ module HeapProfiler
         analyser = Analyzer.new(heap, Index.new(heap))
 
         data = analyser.run(%w(objects memory), [])
-        assert_equal 0, data['total_objects'].stats
-        assert_equal 0, data['total_memory'].stats
+        assert_equal 0, data['total'].objects
+        assert_equal 0, data['total'].memory
       end
     end
 
     def test_total_object_counts
       analyser = build_analyzer('diffed-heap/allocated-diff.heap', 'diffed-heap/allocated.heap')
       data = analyser.run(%w(objects memory), [])
-      assert_equal 35, data['total_objects'].stats
-      assert_equal 3_637, data['total_memory'].stats
+      assert_equal 35, data['total'].objects
+      assert_equal 3_637, data['total'].memory
     end
 
     def test_total_per_gem_counts
       analyser = build_analyzer('diffed-heap/allocated-diff.heap', 'diffed-heap/allocated.heap')
       data = analyser.run(%w(objects), %w(gem))
-      assert_equal({ "other" => 35 }, data['objects_by_gem'].stats)
+      assert_equal({ "other" => 35 }, data['gem'].objects)
     end
 
     def test_total_per_class_counts
@@ -49,7 +49,7 @@ module HeapProfiler
         "<ment> (IMEMO)" => 8,
         "<cref> (IMEMO)" => 2,
       }
-      assert_equal expected, data['objects_by_class'].stats
+      assert_equal expected, data['class'].objects
     end
 
     private
