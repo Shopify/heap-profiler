@@ -1,4 +1,5 @@
 #include "ruby.h"
+#include "ruby/thread.h"
 #include "simdjson.h"
 #include <fstream>
 
@@ -8,7 +9,37 @@ static VALUE rb_eHeapProfilerError, sym_type, sym_class, sym_address, sym_value,
              sym_memsize, sym_imemo_type, sym_struct, sym_file, sym_line, sym_shared,
              sym_references;
 
-static dom::parser parser;
+typedef struct {
+    dom::parser *parser;
+} parser_t;
+
+static void Parser_delete(void *ptr) {
+    parser_t *data = (parser_t*) ptr;
+    delete data->parser;
+}
+
+static size_t Parser_memsize(const void *parser) {
+    return sizeof(dom::parser); // TODO: low priority, figure the real size, e.g. internal buffers etc.
+}
+
+static const rb_data_type_t parser_data_type = {
+    "Parser",
+    { 0, Parser_delete, Parser_memsize, },
+    0, 0, RUBY_TYPED_FREE_IMMEDIATELY
+};
+
+static VALUE parser_allocate(VALUE klass) {
+    parser_t *data;
+    VALUE obj = TypedData_Make_Struct(klass, parser_t, &parser_data_type, data);
+    data->parser = new dom::parser;
+    return obj;
+}
+
+static inline dom::parser * get_parser(VALUE self) {
+    parser_t *data;
+    TypedData_Get_Struct(self, parser_t, &parser_data_type, data);
+    return data->parser;
+}
 
 const uint64_t digittoval[256] = {
      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -58,12 +89,13 @@ static inline int64_t parse_address(dom::element element) {
 static VALUE rb_heap_build_index(VALUE self, VALUE path, VALUE batch_size) {
     Check_Type(path, T_STRING);
     Check_Type(batch_size, T_FIXNUM);
+    dom::parser *parser = get_parser(self);
 
     VALUE string_index = rb_hash_new();
     VALUE class_index = rb_hash_new();
 
     try {
-        auto [objects, error] = parser.load_many(RSTRING_PTR(path), FIX2INT(batch_size));
+        auto [objects, error] = parser->load_many(RSTRING_PTR(path), FIX2INT(batch_size));
         if (error != SUCCESS) {
             rb_raise(rb_eHeapProfilerError, "%s", error_message(error));
         }
@@ -182,10 +214,11 @@ static VALUE rb_heap_load_many(VALUE self, VALUE arg, VALUE batch_size)
 {
     Check_Type(arg, T_STRING);
     Check_Type(batch_size, T_FIXNUM);
+    dom::parser *parser = get_parser(self);
 
     try
     {
-        auto [docs, error] = parser.load_many(RSTRING_PTR(arg), FIX2INT(batch_size));
+        auto [docs, error] = parser->load_many(RSTRING_PTR(arg), FIX2INT(batch_size));
         if (error != SUCCESS)
         {
             rb_raise(rb_eHeapProfilerError, "%s", error_message(error));
@@ -204,19 +237,22 @@ static VALUE rb_heap_load_many(VALUE self, VALUE arg, VALUE batch_size)
     }
 }
 
-static VALUE rb_heap_filter(VALUE self, VALUE source_path, VALUE destination_path, VALUE _generation)
-{
-    Check_Type(source_path, T_STRING);
-    Check_Type(destination_path, T_STRING);
-    Check_Type(_generation, T_FIXNUM);
-    int64_t generation = FIX2INT(_generation);
+struct heap_filter_args {
+    dom::parser *parser;
+    std::ifstream &input;
+    std::ofstream &output;
+    int64_t generation;
+};
 
-    std::ifstream input(RSTRING_PTR(source_path));
-    std::ofstream output(RSTRING_PTR(destination_path), std::ofstream::out);
-    int count = 0;
-    for (std::string line; getline( input, line );) {
+static void * heap_filter_no_gvl(void *data) {
+    struct heap_filter_args *args = (heap_filter_args *)data;
+
+    dom::parser * parser = args->parser;
+    int64_t generation = args->generation;
+
+    for (std::string line; getline(args->input, line);) {
         int64_t object_generation;
-        dom::element object = parser.parse(line);
+        dom::element object = parser->parse(line);
         if (object["generation"].get(object_generation) || object_generation < generation) {
             continue;
         }
@@ -226,12 +262,30 @@ static VALUE rb_heap_filter(VALUE self, VALUE source_path, VALUE destination_pat
             continue;
         }
 
-        count += 1;
-        output << line << std::endl;
+        args->output << line << std::endl;
     }
+    return NULL;
+}
 
+static VALUE rb_heap_filter(VALUE self, VALUE source_path, VALUE destination_path, VALUE _generation)
+{
+    Check_Type(source_path, T_STRING);
+    Check_Type(destination_path, T_STRING);
+    Check_Type(_generation, T_FIXNUM);
+
+    std::ifstream input(RSTRING_PTR(source_path));
+    std::ofstream output(RSTRING_PTR(destination_path), std::ofstream::out);
+
+    struct heap_filter_args args = {
+        .parser = get_parser(self),
+        .input = input,
+        .output = output,
+        .generation = FIX2INT(_generation),
+    };
+
+    rb_thread_call_without_gvl(heap_filter_no_gvl, &args, NULL, NULL);
     output.close();
-    return INT2FIX(count);
+    return Qtrue;
 }
 
 extern "C" {
@@ -249,14 +303,15 @@ extern "C" {
         sym_references = ID2SYM(rb_intern("references"));
 
         VALUE rb_mHeapProfiler = rb_const_get(rb_cObject, rb_intern("HeapProfiler"));
-        VALUE rb_mHeapProfilerNative = rb_const_get(rb_mHeapProfiler, rb_intern("Native"));
 
         rb_eHeapProfilerError = rb_const_get(rb_mHeapProfiler, rb_intern("Error"));
         rb_global_variable(&rb_eHeapProfilerError);
 
-        rb_define_module_function(rb_mHeapProfilerNative, "_build_index", reinterpret_cast<VALUE (*)(...)>(rb_heap_build_index), 2);
-        rb_define_module_function(rb_mHeapProfilerNative, "parse_address", reinterpret_cast<VALUE (*)(...)>(rb_heap_parse_address), 1);
-        rb_define_module_function(rb_mHeapProfilerNative, "_load_many", reinterpret_cast<VALUE (*)(...)>(rb_heap_load_many), 2);
-        rb_define_module_function(rb_mHeapProfilerNative, "_filter_heap", reinterpret_cast<VALUE (*)(...)>(rb_heap_filter), 3);
+        VALUE rb_mHeapProfilerParserNative = rb_const_get(rb_const_get(rb_mHeapProfiler, rb_intern("Parser")), rb_intern("Native"));
+        rb_define_alloc_func(rb_mHeapProfilerParserNative, parser_allocate);
+        rb_define_method(rb_mHeapProfilerParserNative, "_build_index", reinterpret_cast<VALUE (*)(...)>(rb_heap_build_index), 2);
+        rb_define_method(rb_mHeapProfilerParserNative, "parse_address", reinterpret_cast<VALUE (*)(...)>(rb_heap_parse_address), 1);
+        rb_define_method(rb_mHeapProfilerParserNative, "_load_many", reinterpret_cast<VALUE (*)(...)>(rb_heap_load_many), 2);
+        rb_define_method(rb_mHeapProfilerParserNative, "_filter_heap", reinterpret_cast<VALUE (*)(...)>(rb_heap_filter), 3);
     }
 }

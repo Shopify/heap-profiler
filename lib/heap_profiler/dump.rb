@@ -62,11 +62,11 @@ module HeapProfiler
     end
 
     def filter(as, since:)
-      Native.filter_heap(path, as, since: since)
+      Parser.filter_heap(path, as, since: since)
     end
 
     def each_object(&block)
-      Native.load_many(path, batch_size: 10_000_000, &block)
+      Parser.load_many(path, batch_size: 10_000_000, &block)
     end
 
     def stats

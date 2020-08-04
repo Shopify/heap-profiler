@@ -2,6 +2,18 @@
 
 module HeapProfiler
   class Diff
+    class LazyDump
+      def initialize(&block)
+        @thread = Thread.new(&block)
+        @thread.abort_on_exception = true
+      end
+
+      def each_object(&block)
+        @dump ||= @thread.join.value
+        @dump.each_object(&block)
+      end
+    end
+
     attr_reader :allocated
 
     def initialize(report_directory)
@@ -21,11 +33,13 @@ module HeapProfiler
     private
 
     def build_diff(name, base)
-      diff = open_dump(name)
-      unless diff.exist?
-        base.filter(File.join(@report_directory, "#{name}.heap"), since: @generation)
+      LazyDump.new do
+        diff = open_dump(name)
+        unless diff.exist?
+          base.filter(File.join(@report_directory, "#{name}.heap"), since: @generation)
+        end
+        diff
       end
-      diff
     end
 
     def open_dump(name)
