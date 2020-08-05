@@ -3,6 +3,7 @@
 require 'bundler/setup'
 require "heap-profiler"
 require 'fileutils'
+require 'date'
 
 class SomeCustomStuff
 end
@@ -22,6 +23,7 @@ else
       +"I am retained",
       +"I am retained too",
       SomeCustomStuff.new,
+      Date.today,
     ]
     "I am a very very long string " * 4
     [

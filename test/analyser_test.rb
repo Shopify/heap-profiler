@@ -22,45 +22,43 @@ module HeapProfiler
     end
 
     def test_total_object_counts
-      analyser = build_analyzer('diffed-heap/allocated-diff.heap', 'diffed-heap/allocated.heap')
+      analyser = build_analyzer('diffed-heap')
       data = analyser.run(%w(objects memory), [])
-      assert_equal 35, data['total'].objects
-      assert_equal 3_637, data['total'].memory
+      assert_equal 36, data['total'].objects
+      assert_equal 3_717, data['total'].memory
     end
 
     def test_total_per_gem_counts
-      analyser = build_analyzer('diffed-heap/allocated-diff.heap', 'diffed-heap/allocated.heap')
+      analyser = build_analyzer('diffed-heap')
       data = analyser.run(%w(objects), %w(gem))
-      assert_equal({ "other" => 35 }, data['gem'].objects)
+      assert_equal({ "other" => 36 }, data['gem'].objects)
     end
 
     def test_total_per_class_counts
-      analyser = build_analyzer('diffed-heap/allocated-diff.heap', 'diffed-heap/allocated.heap')
+      analyser = build_analyzer('diffed-heap')
       data = analyser.run(%w(objects), %w(class))
       expected = {
         "String" => 12,
         "Array" => 4,
+        "Date" => 1,
         "SomeCustomStuff" => 1,
+        "<ment> (IMEMO)" => 8,
+        "<ifunc> (IMEMO)" => 2,
         "Class" => 2,
         "Hash" => 1,
         "Symbol" => 1,
-        "<iseq> (IMEMO)" => 2,
-        "<ifunc> (IMEMO)" => 2,
-        "<ment> (IMEMO)" => 8,
         "<cref> (IMEMO)" => 2,
+        "<iseq> (IMEMO)" => 2,
       }
       assert_equal expected, data['class'].objects
     end
 
     private
 
-    def build_analyzer(heap_path, index_path = heap_path)
-      heap = Dump.new(fixtures_path(heap_path))
-      if heap_path == index_path
-        Analyzer.new(heap, Index.new(heap))
-      else
-        Analyzer.new(heap, Index.new(Dump.new(fixtures_path(index_path))))
-      end
+    def build_analyzer(report_path, type = 'allocated')
+      diff = Diff.new(fixtures_path(report_path))
+      heap = diff.public_send("#{type}_diff")
+      Analyzer.new(heap, Index.new(diff.allocated))
     end
 
     def fixtures_path(subpath)
