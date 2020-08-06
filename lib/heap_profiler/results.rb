@@ -141,7 +141,7 @@ module HeapProfiler
 
     def pretty_print(io = $stdout, **options)
       diff = Diff.new(@directory)
-      heaps = @types.to_h { |t| [t, diff.public_send("#{t}_diff")] }
+      heaps = @types.each_with_object({}) { |t, h| h[t] = diff.public_send("#{t}_diff") }
       index = Index.new(diff.allocated)
 
       color_output = options.fetch(:color_output) { io.respond_to?(:isatty) && io.isatty }
