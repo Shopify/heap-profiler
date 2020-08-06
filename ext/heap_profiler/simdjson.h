@@ -1,4 +1,4 @@
-/* auto-generated on Mon Jul  6 18:16:52 EDT 2020. Do not edit! */
+/* auto-generated on Thu Aug  6 11:00:19 CEST 2020. Do not edit! */
 /* begin file include/simdjson.h */
 #ifndef SIMDJSON_H
 #define SIMDJSON_H
@@ -60,6 +60,10 @@
 #include <cstdlib>
 #include <cfloat>
 #include <cassert>
+#ifndef _WIN32
+// strcasecmp, strncasecmp 
+#include <strings.h>
+#endif
 
 #ifdef _MSC_VER
 #define SIMDJSON_VISUAL_STUDIO 1
@@ -157,31 +161,26 @@ use a 64-bit target such as x64 or 64-bit ARM.")
 #ifdef __clang__
 // clang does not have GCC push pop
 // warning: clang attribute push can't be used within a namespace in clang up
-// til 8.0 so TARGET_REGION and UNTARGET_REGION must be *outside* of a
+// til 8.0 so SIMDJSON_TARGET_REGION and SIMDJSON_UNTARGET_REGION must be *outside* of a
 // namespace.
-#define TARGET_REGION(T)                                                       \
+#define SIMDJSON_TARGET_REGION(T)                                                       \
   _Pragma(STRINGIFY(                                                           \
       clang attribute push(__attribute__((target(T))), apply_to = function)))
-#define UNTARGET_REGION _Pragma("clang attribute pop")
+#define SIMDJSON_UNTARGET_REGION _Pragma("clang attribute pop")
 #elif defined(__GNUC__)
 // GCC is easier
-#define TARGET_REGION(T)                                                       \
+#define SIMDJSON_TARGET_REGION(T)                                                       \
   _Pragma("GCC push_options") _Pragma(STRINGIFY(GCC target(T)))
-#define UNTARGET_REGION _Pragma("GCC pop_options")
+#define SIMDJSON_UNTARGET_REGION _Pragma("GCC pop_options")
 #endif // clang then gcc
 
 #endif // x86
 
 // Default target region macros don't do anything.
-#ifndef TARGET_REGION
-#define TARGET_REGION(T)
-#define UNTARGET_REGION
+#ifndef SIMDJSON_TARGET_REGION
+#define SIMDJSON_TARGET_REGION(T)
+#define SIMDJSON_UNTARGET_REGION
 #endif
-
-// under GCC and CLANG, we use these two macros
-#define TARGET_HASWELL TARGET_REGION("avx2,bmi,pclmul,lzcnt")
-#define TARGET_WESTMERE TARGET_REGION("sse4.2,pclmul")
-#define TARGET_ARM64
 
 // Is threading enabled?
 #if defined(BOOST_HAS_THREADS) || defined(_REENTRANT) || defined(_MT)
@@ -232,48 +231,6 @@ use a 64-bit target such as x64 or 64-bit ARM.")
 #define simdjson_strncasecmp strncasecmp
 #endif
 
-namespace simdjson {
-/** @private portable version of  posix_memalign */
-static inline void *aligned_malloc(size_t alignment, size_t size) {
-  void *p;
-#ifdef SIMDJSON_VISUAL_STUDIO
-  p = _aligned_malloc(size, alignment);
-#elif defined(__MINGW32__) || defined(__MINGW64__)
-  p = __mingw_aligned_malloc(size, alignment);
-#else
-  // somehow, if this is used before including "x86intrin.h", it creates an
-  // implicit defined warning.
-  if (posix_memalign(&p, alignment, size) != 0) {
-    return nullptr;
-  }
-#endif
-  return p;
-}
-
-/** @private */
-static inline char *aligned_malloc_char(size_t alignment, size_t size) {
-  return (char *)aligned_malloc(alignment, size);
-}
-
-/** @private */
-static inline void aligned_free(void *mem_block) {
-  if (mem_block == nullptr) {
-    return;
-  }
-#ifdef SIMDJSON_VISUAL_STUDIO
-  _aligned_free(mem_block);
-#elif defined(__MINGW32__) || defined(__MINGW64__)
-  __mingw_aligned_free(mem_block);
-#else
-  free(mem_block);
-#endif
-}
-
-/** @private */
-static inline void aligned_free_char(char *mem_block) {
-  aligned_free((void *)mem_block);
-}
-
 #ifdef NDEBUG
 
 #ifdef SIMDJSON_VISUAL_STUDIO
@@ -291,7 +248,6 @@ static inline void aligned_free_char(char *mem_block) {
 
 #endif
 
-} // namespace simdjson
 #endif // SIMDJSON_PORTABILITY_H
 /* end file include/simdjson/portability.h */
 
@@ -389,8 +345,8 @@ constexpr size_t DEFAULT_MAX_DEPTH = 1024;
 
 #else // SIMDJSON_REGULAR_VISUAL_STUDIO
 
-  #define really_inline inline __attribute__((always_inline, unused))
-  #define never_inline inline __attribute__((noinline, unused))
+  #define really_inline inline __attribute__((always_inline))
+  #define never_inline inline __attribute__((noinline))
 
   #define UNUSED __attribute__((unused))
   #define WARN_UNUSED __attribute__((warn_unused_result))
@@ -2458,10 +2414,12 @@ inline simdjson::padded_string operator "" _padded(const char *str, size_t len) 
 namespace simdjson {
 namespace internal {
 
-// low-level function to allocate memory with padding so we can read past the
-// "length" bytes safely. if you must provide a pointer to some data, create it
-// with this function: length is the max. size in bytes of the string caller is
-// responsible to free the memory (free(...))
+// The allocate_padded_buffer function is a low-level function to allocate memory 
+// with padding so we can read past the "length" bytes safely. It is used by 
+// the padded_string class automatically. It returns nullptr in case
+// of error: the caller should check for a null pointer.
+// The length parameter is the maximum size in bytes of the string. 
+// The caller is responsible to free the memory (e.g., delete[] (...)).
 inline char *allocate_padded_buffer(size_t length) noexcept;
 
 } // namespace internal
@@ -3073,10 +3031,13 @@ public:
 
   class iterator {
   public:
+    using value_type = element;
+    using difference_type = std::ptrdiff_t;
+
     /**
      * Get the actual value
      */
-    inline element operator*() const noexcept;
+    inline value_type operator*() const noexcept;
     /**
      * Get the next value.
      *
@@ -3085,11 +3046,27 @@ public:
      */
     inline iterator& operator++() noexcept;
     /**
+     * Get the next value.
+     *
+     * Part of the  std::iterator interface.
+     */
+    inline iterator operator++(int) noexcept;
+    /**
      * Check if these values come from the same place in the JSON.
      *
      * Part of the std::iterator interface.
      */
     inline bool operator!=(const iterator& other) const noexcept;
+    inline bool operator==(const iterator& other) const noexcept;
+
+    inline bool operator<(const iterator& other) const noexcept;
+    inline bool operator<=(const iterator& other) const noexcept;
+    inline bool operator>=(const iterator& other) const noexcept;
+    inline bool operator>(const iterator& other) const noexcept;
+
+    iterator() noexcept = default;
+    iterator(const iterator&) noexcept = default;
+    iterator& operator=(const iterator&) noexcept = default;
   private:
     really_inline iterator(const internal::tape_ref &tape) noexcept;
     internal::tape_ref tape;
@@ -3204,6 +3181,18 @@ inline std::ostream& operator<<(std::ostream& out, const simdjson_result<dom::ar
 #endif
 
 } // namespace simdjson
+
+#if defined(__cpp_lib_ranges)
+#include <ranges>
+
+namespace std::ranges {
+template<>
+inline constexpr bool enable_view<simdjson::dom::array> = true;
+}
+
+static_assert(std::ranges::view<simdjson::dom::array>);
+static_assert(std::ranges::sized_range<simdjson::dom::array>);
+#endif
 
 #endif // SIMDJSON_DOM_ARRAY_H
 /* end file include/simdjson/minify.h */
@@ -3480,7 +3469,7 @@ public:
    * @param batch_size The batch size to use. MUST be larger than the largest document. The sweet
    *                   spot is cache-related: small enough to fit in cache, yet big enough to
    *                   parse as many documents as possible in one tight loop.
-   *                   Defaults to 10MB, which has been a reasonable sweet spot in our tests.
+   *                   Defaults to 1MB (as simdjson::dom::DEFAULT_BATCH_SIZE), which has been a reasonable sweet spot in our tests.
    * @return The stream, or an error. An empty input will yield 0 documents rather than an EMPTY error. Errors:
    *         - IO_ERROR if there was an error opening or reading the file.
    *         - MEMALLOC if the parser does not have enough capacity and memory allocation fails.
@@ -3675,12 +3664,7 @@ private:
   /**
    * The loaded buffer (reused each time load() is called)
    */
-  #if defined(_MSC_VER) && _MSC_VER < 1910
-  // older versions of Visual Studio lack proper support for unique_ptr.
   std::unique_ptr<char[]> loaded_bytes;
-  #else
-  std::unique_ptr<char[], decltype(&aligned_free_char)> loaded_bytes;
-  #endif
 
   /** Capacity of loaded_bytes buffer. */
   size_t _loaded_bytes_capacity{0};
@@ -3834,7 +3818,28 @@ public:
      * may change in future versions of simdjson: we find the API somewhat
      * awkward and we would like to offer something friendlier.  
      */
-     really_inline size_t current_index() noexcept;
+     really_inline size_t current_index() const noexcept;
+    /**
+     * @private
+     * 
+     * Gives a view of the current document.
+     *
+     *   document_stream stream = parser.parse_many(json,window);
+     *   for(auto i = stream.begin(); i != stream.end(); ++i) {
+     *      auto doc = *i;
+     *      std::string_view v = i->source();
+     *   }
+     * 
+     * The returned string_view instance is simply a map to the (unparsed)
+     * source string: it may thus include white-space characters and all manner
+     * of padding.
+     * 
+     * This function (source()) is experimental and the usage
+     * may change in future versions of simdjson: we find the API somewhat
+     * awkward and we would like to offer something friendlier.  
+     */
+     really_inline std::string_view source() const noexcept;
+
   private:
     really_inline iterator(document_stream &s, bool finished) noexcept;
     /** The document_stream we're iterating through. */
@@ -4539,10 +4544,13 @@ public:
 
   class iterator {
   public:
+    using value_type = key_value_pair;
+    using difference_type = std::ptrdiff_t;
+
     /**
      * Get the actual key/value pair
      */
-    inline const key_value_pair operator*() const noexcept;
+    inline const value_type operator*() const noexcept;
     /**
      * Get the next key/value pair.
      *
@@ -4551,11 +4559,24 @@ public:
      */
     inline iterator& operator++() noexcept;
     /**
-     * Check if these key value pairs come from the same place in the JSON.
+     * Get the next key/value pair.
+     *
+     * Part of the std::iterator interface.
+     *
+     */
+    inline iterator operator++(int) noexcept;
+    /**
+     * Check if these values come from the same place in the JSON.
      *
      * Part of the std::iterator interface.
      */
     inline bool operator!=(const iterator& other) const noexcept;
+    inline bool operator==(const iterator& other) const noexcept;
+
+    inline bool operator<(const iterator& other) const noexcept;
+    inline bool operator<=(const iterator& other) const noexcept;
+    inline bool operator>=(const iterator& other) const noexcept;
+    inline bool operator>(const iterator& other) const noexcept;
     /**
      * Get the key of this key/value pair.
      */
@@ -4584,6 +4605,10 @@ public:
      * Get the value of this key/value pair.
      */
     inline element value() const noexcept;
+
+    iterator() noexcept = default;
+    iterator(const iterator&) noexcept = default;
+    iterator& operator=(const iterator&) noexcept = default;
   private:
     really_inline iterator(const internal::tape_ref &tape) noexcept;
 
@@ -4775,6 +4800,18 @@ inline std::ostream& operator<<(std::ostream& out, const simdjson_result<dom::ob
 #endif // SIMDJSON_EXCEPTIONS
 
 } // namespace simdjson
+
+#if defined(__cpp_lib_ranges)
+#include <ranges>
+
+namespace std::ranges {
+template<>
+inline constexpr bool enable_view<simdjson::dom::object> = true;
+}
+
+static_assert(std::ranges::view<simdjson::dom::object>);
+static_assert(std::ranges::sized_range<simdjson::dom::object>);
+#endif
 
 #endif // SIMDJSON_DOM_OBJECT_H
 /* end file include/simdjson/dom/object.h */
@@ -5379,14 +5416,33 @@ really_inline array::iterator::iterator(const internal::tape_ref &_tape) noexcep
 inline element array::iterator::operator*() const noexcept {
   return element(tape);
 }
-inline bool array::iterator::operator!=(const array::iterator& other) const noexcept {
-  return tape.json_index != other.tape.json_index;
-}
 inline array::iterator& array::iterator::operator++() noexcept {
   tape.json_index = tape.after_element();
   return *this;
 }
-
+inline array::iterator array::iterator::operator++(int) noexcept {
+  array::iterator out = *this;
+  ++*this;
+  return out;
+}
+inline bool array::iterator::operator!=(const array::iterator& other) const noexcept {
+  return tape.json_index != other.tape.json_index;
+}
+inline bool array::iterator::operator==(const array::iterator& other) const noexcept {
+  return tape.json_index == other.tape.json_index;
+}
+inline bool array::iterator::operator<(const array::iterator& other) const noexcept {
+  return tape.json_index < other.tape.json_index;
+}
+inline bool array::iterator::operator<=(const array::iterator& other) const noexcept {
+  return tape.json_index <= other.tape.json_index;
+}
+inline bool array::iterator::operator>=(const array::iterator& other) const noexcept {
+  return tape.json_index >= other.tape.json_index;
+}
+inline bool array::iterator::operator>(const array::iterator& other) const noexcept {
+  return tape.json_index > other.tape.json_index;
+}
 inline std::ostream& operator<<(std::ostream& out, const array &value) {
   return out << minify<array>(value);
 }
@@ -5577,9 +5633,16 @@ inline void document_stream::start() noexcept {
   next();
 }
 
-really_inline size_t document_stream::iterator::current_index() noexcept {
+really_inline size_t document_stream::iterator::current_index() const noexcept {
   return stream.doc_index;
 }
+
+really_inline std::string_view document_stream::iterator::source() const noexcept {
+  size_t next_doc_index = stream.batch_start + stream.parser->implementation->structural_indexes[stream.parser->implementation->next_structural_index];
+  return std::string_view(reinterpret_cast<const char*>(stream.buf) + current_index(), next_doc_index - current_index() - 1);
+}
+
+
 inline void document_stream::next() noexcept {
   if (error) { return; }
 
@@ -6367,7 +6430,7 @@ namespace internal {
   // We store the error code so we can validate the error message is associated with the right code
   struct error_code_info {
     error_code code;
-    const char* message;
+    const char* message; // do not use a fancy std::string where a simple C string will do (no alloc, no destructor)
   };
   // These MUST match the codes in error_code. We check this constraint in basictests.
   extern SIMDJSON_DLLIMPORTEXPORT const error_code_info error_codes[];
@@ -6379,6 +6442,7 @@ inline const char *error_message(error_code error) noexcept {
   return internal::error_codes[int(error)].message;
 }
 
+// deprecated function
 inline const std::string error_message(int error) noexcept {
   if (error < 0 || error >= error_code::NUM_ERROR_CODES) {
     return internal::error_codes[UNEXPECTED_ERROR].message;
@@ -6659,10 +6723,30 @@ inline const key_value_pair object::iterator::operator*() const noexcept {
 inline bool object::iterator::operator!=(const object::iterator& other) const noexcept {
   return tape.json_index != other.tape.json_index;
 }
+inline bool object::iterator::operator==(const object::iterator& other) const noexcept {
+  return tape.json_index == other.tape.json_index;
+}
+inline bool object::iterator::operator<(const object::iterator& other) const noexcept {
+  return tape.json_index < other.tape.json_index;
+}
+inline bool object::iterator::operator<=(const object::iterator& other) const noexcept {
+  return tape.json_index <= other.tape.json_index;
+}
+inline bool object::iterator::operator>=(const object::iterator& other) const noexcept {
+  return tape.json_index >= other.tape.json_index;
+}
+inline bool object::iterator::operator>(const object::iterator& other) const noexcept {
+  return tape.json_index > other.tape.json_index;
+}
 inline object::iterator& object::iterator::operator++() noexcept {
   tape.json_index++;
   tape.json_index = tape.after_element();
   return *this;
+}
+inline object::iterator object::iterator::operator++(int) noexcept {
+  object::iterator out = *this;
+  ++*this;
+  return out;
 }
 inline std::string_view object::iterator::key() const noexcept {
   return tape.get_string_view();
@@ -6777,26 +6861,21 @@ inline std::ostream& operator<<(std::ostream& out, const simdjson_result<dom::ob
 namespace simdjson {
 namespace internal {
 
-// low-level function to allocate memory with padding so we can read past the
-// "length" bytes safely. if you must provide a pointer to some data, create it
-// with this function: length is the max. size in bytes of the string caller is
-// responsible to free the memory (free(...))
+// The allocate_padded_buffer function is a low-level function to allocate memory 
+// with padding so we can read past the "length" bytes safely. It is used by 
+// the padded_string class automatically. It returns nullptr in case
+// of error: the caller should check for a null pointer.
+// The length parameter is the maximum size in bytes of the string. 
+// The caller is responsible to free the memory (e.g., delete[] (...)).
 inline char *allocate_padded_buffer(size_t length) noexcept {
-  // we could do a simple malloc
-  // return (char *) malloc(length + SIMDJSON_PADDING);
-  // However, we might as well align to cache lines...
   size_t totalpaddedlength = length + SIMDJSON_PADDING;
-#if defined(_MSC_VER) && _MSC_VER < 1910
-  // For legacy Visual Studio 2015 since it does not have proper C++11 support
-  char *padded_buffer = new[totalpaddedlength];
-#else
-  char *padded_buffer = aligned_malloc_char(64, totalpaddedlength);
-#endif
-#ifndef NDEBUG
+  char *padded_buffer = new (std::nothrow) char[totalpaddedlength];
   if (padded_buffer == nullptr) {
     return nullptr;
   }
-#endif // NDEBUG
+  // We write zeroes in the padded region to avoid having uninitized 
+  // garbage. If nothing else, garbage getting read might trigger a 
+  // warning in a memory checking.
   memset(padded_buffer + length, 0, totalpaddedlength - length);
   return padded_buffer;
 } // allocate_padded_buffer()
@@ -6839,7 +6918,7 @@ inline padded_string::padded_string(padded_string &&o) noexcept
 }
 
 inline padded_string &padded_string::operator=(padded_string &&o) noexcept {
-  aligned_free_char(data_ptr);
+  delete[] data_ptr;
   data_ptr = o.data_ptr;
   viable_size = o.viable_size;
   o.data_ptr = nullptr; // we take ownership
@@ -6857,7 +6936,7 @@ inline void padded_string::swap(padded_string &o) noexcept {
 }
 
 inline padded_string::~padded_string() noexcept {
-  aligned_free_char(data_ptr);
+  delete[] data_ptr;
 }
 
 inline size_t padded_string::size() const noexcept { return viable_size; }
@@ -7413,18 +7492,10 @@ namespace dom {
 //
 // parser inline implementation
 //
-#if defined(_MSC_VER) && _MSC_VER < 1910
-// older versions of Visual Studio lack proper support for unique_ptr.
 really_inline parser::parser(size_t max_capacity) noexcept
   : _max_capacity{max_capacity},
     loaded_bytes(nullptr) {
 }
-#else 
-really_inline parser::parser(size_t max_capacity) noexcept
-  : _max_capacity{max_capacity},
-    loaded_bytes(nullptr, &aligned_free_char) {
-}
-#endif
 really_inline parser::parser(parser &&other) noexcept = default;
 really_inline parser &parser::operator=(parser &&other) noexcept = default;
 
@@ -7499,19 +7570,14 @@ inline simdjson_result<document_stream> parser::load_many(const std::string &pat
 inline simdjson_result<element> parser::parse(const uint8_t *buf, size_t len, bool realloc_if_needed) & noexcept {
   error_code _error = ensure_capacity(len);
   if (_error) { return _error; }
+  std::unique_ptr<uint8_t[]> tmp_buf;
 
   if (realloc_if_needed) {
-    const uint8_t *tmp_buf = buf;
-    buf = (uint8_t *)internal::allocate_padded_buffer(len);
-    if (buf == nullptr)
-      return MEMALLOC;
-    memcpy((void *)buf, tmp_buf, len);
+    tmp_buf.reset((uint8_t *)internal::allocate_padded_buffer(len));
+    if (tmp_buf.get() == nullptr) { return MEMALLOC; }
+    memcpy((void *)tmp_buf.get(), buf, len);
   }
-
-  _error = implementation->parse(buf, len, doc);
-  if (realloc_if_needed) {
-    aligned_free((void *)buf); // must free before we exit
-  }
+  _error = implementation->parse(realloc_if_needed ? tmp_buf.get() : buf, len, doc);
   if (_error) { return _error; }
 
   return doc.root();

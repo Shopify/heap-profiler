@@ -41,6 +41,10 @@ module HeapProfiler
       def load_many(path, since: nil, batch_size: DEFAULT_BATCH_SIZE, &block)
         _load_many(path, since, batch_size, &block)
       end
+
+      def filter_heap(source, destination, generation)
+        _filter_heap(source, destination, generation)
+      end
     end
 
     class << self
@@ -50,6 +54,10 @@ module HeapProfiler
 
       def load_many(path, **kwargs, &block)
         current.load_many(path, **kwargs, &block)
+      end
+      
+      def filter_heap(source, destination, generation)
+        current.filter_heap(source, destination, generation)
       end
 
       private
