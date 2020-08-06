@@ -262,7 +262,7 @@ static VALUE rb_heap_load_many(VALUE self, VALUE arg, VALUE since, VALUE batch_s
 
 struct heap_filter_args {
     dom::parser *parser;
-    std::ifstream &input;
+    char * source_path;
     std::ofstream &output;
     int64_t generation;
 };
@@ -273,20 +273,22 @@ static void * heap_filter_no_gvl(void *data) {
     dom::parser * parser = args->parser;
     int64_t generation = args->generation;
 
-    for (std::string line; getline(args->input, line);) {
-        int64_t object_generation;
-        dom::element object = parser->parse(line);
-        if (object["generation"].get(object_generation) || object_generation < generation) {
-            continue;
-        }
+    dom::document_stream stream = parser->load_many(args->source_path, 10000000);
+    for(auto i = stream.begin(); i != stream.end(); ++i) {
+          auto object = *i;
+          int64_t object_generation;
+          if (object["generation"].get(object_generation) || object_generation < generation) {
+              continue;
+          }
 
-        std::string_view file;
-        if (!object["file"].get(file) && file == "__hprof") {
-            continue;
-        }
+          std::string_view file;
+          if (!object["file"].get(file) && file == "__hprof") {
+              continue;
+          }
 
-        args->output << line << std::endl;
-    }
+          args->output << i.source() << std::endl;
+     }
+
     return NULL;
 }
 
@@ -296,12 +298,11 @@ static VALUE rb_heap_filter(VALUE self, VALUE source_path, VALUE destination_pat
     Check_Type(destination_path, T_STRING);
     Check_Type(_generation, T_FIXNUM);
 
-    std::ifstream input(RSTRING_PTR(source_path));
     std::ofstream output(RSTRING_PTR(destination_path), std::ofstream::out);
 
     struct heap_filter_args args = {
         .parser = get_parser(self),
-        .input = input,
+        .source_path = RSTRING_PTR(source_path),
         .output = output,
         .generation = FIX2INT(_generation),
     };
