@@ -121,9 +121,7 @@ static VALUE rb_heap_build_index(VALUE self, VALUE path, VALUE batch_size) {
                 }
             }
         }
-    }
-    catch (simdjson::simdjson_error error)
-    {
+    } catch (simdjson::simdjson_error error) {
         rb_raise(rb_eHeapProfilerError, "exc: %s", error.what());
     }
 
@@ -219,19 +217,16 @@ static VALUE rb_heap_load_many(VALUE self, VALUE arg, VALUE since, VALUE batch_s
 
     dom::parser *parser = get_parser(self);
 
-    try
-    {
+    try {
         auto [objects, error] = parser->load_many(RSTRING_PTR(arg), FIX2INT(batch_size));
-        if (error != SUCCESS)
-        {
+        if (error != SUCCESS) {
             rb_raise(rb_eHeapProfilerError, "%s", error_message(error));
         }
 
         if (RTEST(since)) {
             Check_Type(since, T_FIXNUM);
             int64_t generation = FIX2INT(since);
-            for (dom::element object : objects)
-            {
+            for (dom::element object : objects) {
                 int64_t object_generation;
                 if (object["generation"].get(object_generation) || object_generation < generation) {
                     continue;
@@ -245,16 +240,13 @@ static VALUE rb_heap_load_many(VALUE self, VALUE arg, VALUE since, VALUE batch_s
                 rb_yield(make_ruby_object(object));
             }
         } else {
-            for (dom::element object : objects)
-            {
+            for (dom::element object : objects) {
                 rb_yield(make_ruby_object(object));
             }
         }
 
         return Qnil;
-    }
-    catch (simdjson::simdjson_error error)
-    {
+    } catch (simdjson::simdjson_error error) {
         rb_raise(rb_eHeapProfilerError, "%s", error.what());
     }
 }
