@@ -2,9 +2,4 @@
 # frozen_string_literal: true
 
 require "heap_profiler/full"
-require "stackprof"
-res = nil
-StackProf.run(mode: :wall, out: '/tmp/stackprof-wall-heap.dump') do
-  res = HeapProfiler::CLI.new(ARGV).run
-end
-exit(res)
+exit(HeapProfiler::CLI.new(ARGV).run)
