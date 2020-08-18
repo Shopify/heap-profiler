@@ -59,30 +59,28 @@ const uint64_t digittoval[256] = {
 // Inspired by https://lemire.me/blog/2019/04/17/parsing-short-hexadecimal-strings-efficiently/
 // Ruby addresses in heap dump are hexadecimal strings "0x000000000000"...0xffffffffffff".
 // The format being fairly stable allow for faster parsing. It should be equivalent to String#to_i(16).
-static inline uint64_t parse_address(const char * address) {
-    return (
-        digittoval[address[ 2]] << 44 |
-        digittoval[address[ 3]] << 40 |
-        digittoval[address[ 4]] << 36 |
-        digittoval[address[ 5]] << 32 |
-        digittoval[address[ 6]] << 28 |
-        digittoval[address[ 7]] << 24 |
-        digittoval[address[ 8]] << 20 |
-        digittoval[address[ 9]] << 16 |
-        digittoval[address[10]] << 12 |
-        digittoval[address[11]] <<  8 |
-        digittoval[address[12]] <<  4 |
-        digittoval[address[13]]
-    );
+static inline uint64_t parse_address(const char * address, const long size) {
+    assert(address[0] == '0');
+    assert(address[1] == 'x');
+
+    uint64_t value = 0;
+    for (int index = 2; index < size; index++) {
+        value <<= 4;
+        value |= digittoval[address[index]];
+    }
+    return value;
 }
 
-static inline int64_t parse_address(dom::element element) {
+static inline int64_t parse_address(std::string_view address) {
+    return parse_address(address.data(), address.size());
+}
+
+static inline int64_t parse_dom_address(dom::element element) {
     std::string_view address;
     if (element.get(address)) {
         return 0; // ROOT object
     }
-    assert(address.size() == 14);
-    return parse_address(address.data());
+    return parse_address(address);
 }
 
 static VALUE rb_heap_build_index(VALUE self, VALUE path, VALUE batch_size) {
@@ -108,14 +106,14 @@ static VALUE rb_heap_build_index(VALUE self, VALUE path, VALUE batch_size) {
             if (type == "STRING") {
                 std::string_view value;
                 if (!object["value"].get(value)) {
-                    VALUE address = INT2FIX(parse_address(object["address"]));
+                    VALUE address = INT2FIX(parse_dom_address(object["address"]));
                     VALUE string = rb_utf8_str_new(value.data(), value.size());
                     rb_hash_aset(string_index, address, string);
                 }
             } else if (type == "CLASS" || type == "MODULE") {
                 std::string_view name;
                 if (!object["name"].get(name)) {
-                    VALUE address = INT2FIX(parse_address(object["address"]));
+                    VALUE address = INT2FIX(parse_dom_address(object["address"]));
                     VALUE class_name = rb_utf8_str_new(name.data(), name.size());
                     rb_hash_aset(class_index, address, class_name);
                 }
@@ -133,8 +131,7 @@ static VALUE rb_heap_build_index(VALUE self, VALUE path, VALUE batch_size) {
 
 static VALUE rb_heap_parse_address(VALUE self, VALUE address) {
     Check_Type(address, T_STRING);
-    assert(RSTRING_LEN(address) == 14);
-    return INT2FIX(parse_address(RSTRING_PTR(address)));
+    return INT2FIX(parse_address(RSTRING_PTR(address), RSTRING_LEN(address)));
 }
 
 static VALUE make_ruby_object(dom::object object)
@@ -148,12 +145,12 @@ static VALUE make_ruby_object(dom::object object)
 
     std::string_view address;
     if (!object["address"].get(address)) {
-        rb_hash_aset(hash, sym_address, INT2FIX(parse_address(address.data())));
+        rb_hash_aset(hash, sym_address, INT2FIX(parse_address(address)));
     }
 
     std::string_view _class;
     if (!object["class"].get(_class)) {
-        rb_hash_aset(hash, sym_class, INT2FIX(parse_address(_class.data())));
+        rb_hash_aset(hash, sym_class, INT2FIX(parse_address(_class)));
     }
 
     uint64_t memsize;
@@ -189,7 +186,7 @@ static VALUE make_ruby_object(dom::object object)
                 for (dom::element reference_element : reference_elements) {
                     std::string_view reference;
                     if (!reference_element.get(reference)) {
-                        rb_ary_push(references, INT2FIX(parse_address(reference.data())));
+                        rb_ary_push(references, INT2FIX(parse_address(reference)));
                     }
                 }
                 rb_hash_aset(hash, sym_references, references);

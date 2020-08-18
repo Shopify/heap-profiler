@@ -9,9 +9,12 @@ module HeapProfiler
     end
 
     def test_fast_address_parsing
-      %w(0x7f921e8b8190 0x7f922208ff78 0x7f921e8a29d0).each do |address|
-        assert_equal address.to_i(16), @native.parse_address(address)
-      end
+      assert_address_parsing '0x0'
+      assert_address_parsing '0x7f921e8b8190'
+      assert_address_parsing '0x7f922208ff78'
+      assert_address_parsing '0x7f921e8a29d0'
+      assert_address_parsing '0xffffffffffffff'
+      assert_address_parsing '0xFFFFFFFFFFFFFFF'
     end
 
     def test_class_index
@@ -39,6 +42,10 @@ module HeapProfiler
     end
 
     private
+
+    def assert_address_parsing(address)
+      assert_equal address.to_i(16), @native.parse_address(address)
+    end
 
     def fixtures_path(subpath)
       File.expand_path(File.join('../fixtures', subpath), __FILE__)
