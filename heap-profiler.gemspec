@@ -3,7 +3,7 @@ require_relative 'lib/heap_profiler/version'
 
 Gem::Specification.new do |spec|
   spec.name          = "heap-profiler"
-  spec.version       = Heap::Profiler::VERSION
+  spec.version       = HeapProfiler::VERSION
   spec.authors       = ["Jean Boussier"]
   spec.email         = ["jean.boussier@gmail.com"]
 

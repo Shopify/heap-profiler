@@ -3,7 +3,7 @@ name: heap-profiler
 type: ruby
 
 up:
-  - ruby: 2.7.1
+  - ruby: 2.7.2
   - bundler
 
 commands:

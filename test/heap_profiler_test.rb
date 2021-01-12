@@ -3,7 +3,7 @@ require "test_helper"
 
 class HeapProfilerTest < Minitest::Test
   def test_that_it_has_a_version_number
-    refute_nil ::Heap::Profiler::VERSION
+    refute_nil ::HeapProfiler::VERSION
   end
 
   def test_report_dump_two_heaps_and_generation
