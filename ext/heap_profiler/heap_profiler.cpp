@@ -83,6 +83,14 @@ static inline int64_t parse_dom_address(dom::element element) {
     return parse_address(address);
 }
 
+static inline VALUE make_symbol(std::string_view string) {
+    return ID2SYM(rb_intern2(string.data(), string.size()));
+}
+
+static inline VALUE make_string(std::string_view string) {
+    return rb_utf8_str_new(string.data(), string.size());
+}
+
 static VALUE rb_heap_build_index(VALUE self, VALUE path, VALUE batch_size) {
     Check_Type(path, T_STRING);
     Check_Type(batch_size, T_FIXNUM);
@@ -107,14 +115,14 @@ static VALUE rb_heap_build_index(VALUE self, VALUE path, VALUE batch_size) {
                 std::string_view value;
                 if (!object["value"].get(value)) {
                     VALUE address = INT2FIX(parse_dom_address(object["address"]));
-                    VALUE string = rb_utf8_str_new(value.data(), value.size());
+                    VALUE string = make_string(value);
                     rb_hash_aset(string_index, address, string);
                 }
             } else if (type == "CLASS" || type == "MODULE") {
                 std::string_view name;
                 if (!object["name"].get(name)) {
                     VALUE address = INT2FIX(parse_dom_address(object["address"]));
-                    VALUE class_name = rb_utf8_str_new(name.data(), name.size());
+                    VALUE class_name = make_string(name);
                     rb_hash_aset(class_index, address, class_name);
                 }
             }
@@ -140,7 +148,7 @@ static VALUE make_ruby_object(dom::object object)
 
     std::string_view type;
     if (!object["type"].get(type)) {
-        rb_hash_aset(hash, sym_type, ID2SYM(rb_intern2(type.data(), type.size())));
+        rb_hash_aset(hash, sym_type, make_symbol(type));
     }
 
     std::string_view address;
@@ -164,17 +172,17 @@ static VALUE make_ruby_object(dom::object object)
     if (type == "IMEMO") {
         std::string_view imemo_type;
         if (!object["imemo_type"].get(imemo_type)) {
-            rb_hash_aset(hash, sym_imemo_type, ID2SYM(rb_intern2(imemo_type.data(), imemo_type.size())));
+            rb_hash_aset(hash, sym_imemo_type, make_symbol(imemo_type));
         }
     } else if (type == "DATA") {
         std::string_view _struct;
         if (!object["struct"].get(_struct)) {
-            rb_hash_aset(hash, sym_struct, ID2SYM(rb_intern2(_struct.data(), _struct.size())));
+            rb_hash_aset(hash, sym_struct, make_symbol(_struct));
         }
     } else if (type == "STRING") {
         std::string_view value;
         if (!object["value"].get(value)) {
-            rb_hash_aset(hash, sym_value, rb_utf8_str_new(value.data(), value.size()));
+            rb_hash_aset(hash, sym_value, make_string(value));
         }
 
         bool shared;
@@ -196,7 +204,7 @@ static VALUE make_ruby_object(dom::object object)
 
     std::string_view file;
     if (!object["file"].get(file)) {
-        rb_hash_aset(hash, sym_file, rb_utf8_str_new(file.data(), file.size()));
+        rb_hash_aset(hash, sym_file, make_string(file));
     }
 
     uint64_t line;
