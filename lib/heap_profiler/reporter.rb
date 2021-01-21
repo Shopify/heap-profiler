@@ -54,10 +54,14 @@ module HeapProfiler
     def stop
       HeapProfiler.name_anonymous_modules!
       ObjectSpace.trace_object_allocations_stop if @enable_tracing
+
+      # we can't use partial dump for allocated.heap, because we need old generations
+      # as well to build the classes and strings indexes.
       dump_heap(@allocated_heap)
+
       GC.enable
       4.times { GC.start }
-      dump_heap(@retained_heap)
+      dump_heap(@retained_heap, partial: true)
       @allocated_heap.close
       @retained_heap.close
       write_info("generation", @generation.to_s)
@@ -82,17 +86,24 @@ module HeapProfiler
       File.write(File.join(@dir_path, "#{key}.info"), value)
     end
 
-    # ObjectSpace.dump_all does allocate a few objects in itself (https://bugs.ruby-lang.org/issues/17045)
-    # because of this even en empty block of code will report a handful of allocations.
-    # To filter them more easily we attribute call `dump_all` from a method with a very specific `file`
-    # property.
-    class_eval <<~RUBY, '__hprof', __LINE__
-      # frozen_string_literal: true
-      def dump_heap(file)
-        ObjectSpace.dump_all(output: file)
+    if RUBY_VERSION >= '3.0'
+      def dump_heap(file, partial: false)
+        ObjectSpace.dump_all(output: file, since: partial ? @generation : nil)
         file.close
       end
-    RUBY
+    else
+      # ObjectSpace.dump_all does allocate a few objects in itself (https://bugs.ruby-lang.org/issues/17045)
+      # because of this even en empty block of code will report a handful of allocations.
+      # To filter them more easily we attribute call `dump_all` from a method with a very specific `file`
+      # property.
+      class_eval <<~RUBY, '__hprof', __LINE__
+        # frozen_string_literal: true
+        def dump_heap(file, partial: false)
+          ObjectSpace.dump_all(output: file)
+          file.close
+        end
+      RUBY
+    end
 
     def open_heap(name)
       File.open(File.join(@dir_path, "#{name}.heap"), 'w+')
