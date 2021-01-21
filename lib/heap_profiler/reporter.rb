@@ -9,8 +9,6 @@ module HeapProfiler
     # So we name them at the start of the profile to avoid that.
     #
     # See: https://github.com/ruby/ruby/pull/3349
-    #
-    # TODO: Could we actually do the dump ourselves? objspace is a extension already.
     if RUBY_VERSION < '2.8'
       def name_anonymous_modules!
         ObjectSpace.each_object(Module) do |mod|
