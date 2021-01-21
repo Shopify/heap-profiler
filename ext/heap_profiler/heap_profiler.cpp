@@ -1,4 +1,5 @@
 #include "ruby.h"
+#include "ruby/encoding.h"
 #include "simdjson.h"
 #include <fstream>
 
@@ -6,7 +7,7 @@ using namespace simdjson;
 
 static VALUE rb_eHeapProfilerError, sym_type, sym_class, sym_address, sym_value,
              sym_memsize, sym_imemo_type, sym_struct, sym_file, sym_line, sym_shared,
-             sym_references;
+             sym_references, id_uminus;
 
 typedef struct {
     dom::parser *parser;
@@ -91,6 +92,16 @@ static inline VALUE make_string(std::string_view string) {
     return rb_utf8_str_new(string.data(), string.size());
 }
 
+# ifdef HAVE_RB_ENC_INTERNED_STR
+    static inline VALUE dedup_string(std::string_view string) {
+        return rb_enc_interned_str(string.data(), string.size(), rb_utf8_encoding());
+    }
+# else
+    static inline VALUE dedup_string(std::string_view string) {
+        return rb_funcall(make_string(string), id_uminus, 0);
+    }
+# endif
+
 static VALUE rb_heap_build_index(VALUE self, VALUE path, VALUE batch_size) {
     Check_Type(path, T_STRING);
     Check_Type(batch_size, T_FIXNUM);
@@ -122,7 +133,7 @@ static VALUE rb_heap_build_index(VALUE self, VALUE path, VALUE batch_size) {
                 std::string_view name;
                 if (!object["name"].get(name)) {
                     VALUE address = INT2FIX(parse_dom_address(object["address"]));
-                    VALUE class_name = make_string(name);
+                    VALUE class_name = dedup_string(name);
                     rb_hash_aset(class_index, address, class_name);
                 }
             }
@@ -204,7 +215,7 @@ static VALUE make_ruby_object(dom::object object)
 
     std::string_view file;
     if (!object["file"].get(file)) {
-        rb_hash_aset(hash, sym_file, make_string(file));
+        rb_hash_aset(hash, sym_file, dedup_string(file));
     }
 
     uint64_t line;
@@ -269,6 +280,7 @@ extern "C" {
         sym_line = ID2SYM(rb_intern("line"));
         sym_shared = ID2SYM(rb_intern("shared"));
         sym_references = ID2SYM(rb_intern("references"));
+        id_uminus = rb_intern("-@");
 
         VALUE rb_mHeapProfiler = rb_const_get(rb_cObject, rb_intern("HeapProfiler"));
 
