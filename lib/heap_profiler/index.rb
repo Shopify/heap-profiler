@@ -34,7 +34,7 @@ module HeapProfiler
     }.freeze
 
     IMEMO_TYPES = Hash.new { |h, k| h[k] = "<#{k || 'unknown'}> (IMEMO)" }
-    DATA_TYPES = Hash.new { |h, k| h[k] = "<#{(k || 'unknown')}> (DATA)" }
+    DATA_TYPES = Hash.new { |h, k| h[k] = "<#{k || 'unknown'}> (DATA)" }
 
     def guess_class(object)
       type = object[:type]

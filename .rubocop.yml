@@ -16,5 +16,8 @@ Naming/FileName:
 Lint/RescueException:
   Enabled: false
 
+Lint/MissingSuper:
+  Enabled: false
+
 Metrics/ParameterLists:
   Enabled: false
