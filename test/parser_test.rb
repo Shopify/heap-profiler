@@ -41,6 +41,16 @@ module HeapProfiler
       assert_equal ruby_string_index, string_index
     end
 
+    def test_ruby_3_singleton_classes
+      class_index, _ = @ruby.build_index(fixtures_path('ruby-3.0-singleton-classes.heap'))
+      assert_equal '<Class#0x7ffe49046150>', class_index[0x7ffe49046150]
+      assert_equal '<Class /tmp/dump-singleton.rb:8>', class_index[0x7ffe49045ef8]
+
+      class_index, _ = @native.build_index(fixtures_path('ruby-3.0-singleton-classes.heap'))
+      assert_equal '<Class#0x7ffe49046150>', class_index[0x7ffe49046150]
+      assert_equal '<Class /tmp/dump-singleton.rb:8>', class_index[0x7ffe49045ef8]
+    end
+
     private
 
     def assert_address_parsing(address)

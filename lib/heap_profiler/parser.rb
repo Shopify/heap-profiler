@@ -2,18 +2,28 @@
 
 module HeapProfiler
   module Parser
+    CLASS_DEFAULT_PROC = ->(_hash, key) { "<Class#0x#{key.to_s(16)}>" }
+
     class Ruby
       def build_index(path)
         require 'json'
         classes_index = {}
+        classes_index.default_proc = CLASS_DEFAULT_PROC
         strings_index = {}
 
         File.open(path).each_line do |line|
           object = JSON.parse(line, symbolize_names: true)
           case object[:type]
           when 'MODULE', 'CLASS'
-            if (name = object[:name])
-              classes_index[parse_address(object[:address])] = name
+            address = parse_address(object[:address])
+
+            name = object[:name]
+            name ||= if object[:file] && object[:line]
+              "<Class #{object[:file]}:#{object[:line]}>"
+            end
+
+            if name
+              classes_index[address] = name
             end
           when 'STRING'
             next if object[:shared]
@@ -35,7 +45,9 @@ module HeapProfiler
       DEFAULT_BATCH_SIZE = 10_000_000 # 10MB
 
       def build_index(path, batch_size: DEFAULT_BATCH_SIZE)
-        _build_index(path, batch_size)
+        indexes = _build_index(path, batch_size)
+        indexes.first.default_proc = CLASS_DEFAULT_PROC
+        indexes
       end
 
       def load_many(path, since: nil, batch_size: DEFAULT_BATCH_SIZE, &block)

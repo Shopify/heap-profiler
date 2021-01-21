@@ -130,10 +130,27 @@ static VALUE rb_heap_build_index(VALUE self, VALUE path, VALUE batch_size) {
                     rb_hash_aset(string_index, address, string);
                 }
             } else if (type == "CLASS" || type == "MODULE") {
+                VALUE address = INT2FIX(parse_dom_address(object["address"]));
+                VALUE class_name = Qfalse;
+
                 std::string_view name;
                 if (!object["name"].get(name)) {
-                    VALUE address = INT2FIX(parse_dom_address(object["address"]));
-                    VALUE class_name = dedup_string(name);
+                    class_name = dedup_string(name);
+                } else {
+                    std::string_view file;
+                    uint64_t line;
+
+                    if (!object["file"].get(file) && !object["line"].get(line)) {
+                        std::string buffer = "<Class ";
+                        buffer += file;
+                        buffer += ":";
+                        buffer += std::to_string(line);
+                        buffer += ">";
+                        class_name = dedup_string(buffer);
+                    }
+                }
+
+                if (RTEST(class_name)) {
                     rb_hash_aset(class_index, address, class_name);
                 }
             }
