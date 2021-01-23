@@ -51,8 +51,8 @@ module HeapProfiler
           $stderr.puts("WARNING: Couldn't infer class name of: #{object.inspect}")
           nil
         end
-      else
-        DATA_TYPES[object[:struct]] if type == :DATA
+      elsif type == :DATA
+        DATA_TYPES[object[:struct]]
       end
     end
 
