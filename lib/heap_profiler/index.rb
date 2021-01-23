@@ -44,14 +44,15 @@ module HeapProfiler
 
       return IMEMO_TYPES[object[:imemo_type]] if type == :IMEMO
 
-      class_address = object[:class]
-      return unless class_address
+      if (class_address = object[:class])
+        @classes.fetch(class_address) do
+          return DATA_TYPES[object[:struct]] if type == :DATA
 
-      @classes.fetch(class_address) do
-        return DATA_TYPES[object[:struct]] if type == :DATA
-
-        $stderr.puts("WARNING: Couldn't infer class name of: #{object.inspect}")
-        nil
+          $stderr.puts("WARNING: Couldn't infer class name of: #{object.inspect}")
+          nil
+        end
+      else
+        DATA_TYPES[object[:struct]] if type == :DATA
       end
     end
 
