@@ -11,9 +11,6 @@ module HeapProfiler
 
       def process(_index, object)
         @objects += 1
-        unless object[:memsize]
-          p object
-        end
         @memory += object[:memsize]
       end
 
