@@ -62,7 +62,7 @@ module HeapProfiler
     end
 
     def each_object(since: nil, &block)
-      Parser.load_many(path, since: since, batch_size: 10_000_000, &block)
+      Parser.load_many(path, since: since, &block)
     end
 
     def stats

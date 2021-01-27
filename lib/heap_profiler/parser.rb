@@ -42,7 +42,9 @@ module HeapProfiler
     end
 
     class Native
-      DEFAULT_BATCH_SIZE = 10_000_000 # 10MB
+      # TODO: This should be passed as a CLI argument.
+      # MAYBE: Use human size, e.g. --batch-size=50MB
+      DEFAULT_BATCH_SIZE = Integer(ENV.fetch('HP_PARSER_BATCH_SIZE', 10_000_000)) # 10MB
 
       def build_index(path, batch_size: DEFAULT_BATCH_SIZE)
         indexes = _build_index(path, batch_size)
