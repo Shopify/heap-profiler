@@ -106,12 +106,13 @@ static VALUE rb_heap_build_index(VALUE self, VALUE path, VALUE batch_size) {
     Check_Type(path, T_STRING);
     Check_Type(batch_size, T_FIXNUM);
     dom::parser *parser = get_parser(self);
+    dom::document_stream objects;
 
     VALUE string_index = rb_hash_new();
     VALUE class_index = rb_hash_new();
 
     try {
-        auto [objects, error] = parser->load_many(RSTRING_PTR(path), FIX2INT(batch_size));
+        auto error = parser->load_many(RSTRING_PTR(path), FIX2INT(batch_size)).get(objects);
         if (error != SUCCESS) {
             rb_raise(rb_eHeapProfilerError, "%s", error_message(error));
         }
@@ -249,9 +250,9 @@ static VALUE rb_heap_load_many(VALUE self, VALUE arg, VALUE since, VALUE batch_s
     Check_Type(batch_size, T_FIXNUM);
 
     dom::parser *parser = get_parser(self);
-
+    dom::document_stream objects;
     try {
-        auto [objects, error] = parser->load_many(RSTRING_PTR(arg), FIX2INT(batch_size));
+        auto error = parser->load_many(RSTRING_PTR(arg), FIX2INT(batch_size)).get(objects);
         if (error != SUCCESS) {
             rb_raise(rb_eHeapProfilerError, "%s", error_message(error));
         }
