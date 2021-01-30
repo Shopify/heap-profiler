@@ -4,6 +4,11 @@ module HeapProfiler
   module Parser
     CLASS_DEFAULT_PROC = ->(_hash, key) { "<Class#0x#{key.to_s(16)}>" }
 
+    class << self
+      attr_accessor :batch_size
+    end
+    self.batch_size = 10_000_000 # 10MB
+
     class Ruby
       def build_index(path)
         require 'json'
@@ -42,17 +47,13 @@ module HeapProfiler
     end
 
     class Native
-      # TODO: This should be passed as a CLI argument.
-      # MAYBE: Use human size, e.g. --batch-size=50MB
-      DEFAULT_BATCH_SIZE = Integer(ENV.fetch('HP_PARSER_BATCH_SIZE', 10_000_000)) # 10MB
-
-      def build_index(path, batch_size: DEFAULT_BATCH_SIZE)
+      def build_index(path, batch_size: Parser.batch_size)
         indexes = _build_index(path, batch_size)
         indexes.first.default_proc = CLASS_DEFAULT_PROC
         indexes
       end
 
-      def load_many(path, since: nil, batch_size: DEFAULT_BATCH_SIZE, &block)
+      def load_many(path, since: nil, batch_size: Parser.batch_size, &block)
         _load_many(path, since, batch_size, &block)
       end
     end

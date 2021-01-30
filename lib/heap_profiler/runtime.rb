@@ -8,6 +8,7 @@ require "heap_profiler/reporter"
 
 module HeapProfiler
   Error = Class.new(StandardError)
+  CapacityError = Class.new(Error)
 
   class << self
     attr_accessor :current_reporter

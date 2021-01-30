@@ -51,6 +51,16 @@ module HeapProfiler
       assert_equal '<Class /tmp/dump-singleton.rb:8>', class_index[0x7ffe49045ef8]
     end
 
+    def test_insufficient_batch_size
+      previous_batch_size = Parser.batch_size
+      Parser.batch_size = 100
+      assert_raises CapacityError do
+        @native.build_index(fixtures_path('diffed-heap/allocated.heap'))
+      end
+    ensure
+      Parser.batch_size = previous_batch_size
+    end
+
     private
 
     def assert_address_parsing(address)

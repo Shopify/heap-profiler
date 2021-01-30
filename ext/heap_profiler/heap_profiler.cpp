@@ -5,9 +5,9 @@
 
 using namespace simdjson;
 
-static VALUE rb_eHeapProfilerError, sym_type, sym_class, sym_address, sym_value,
-             sym_memsize, sym_imemo_type, sym_struct, sym_file, sym_line, sym_shared,
-             sym_references, id_uminus;
+static VALUE rb_eHeapProfilerError, rb_eHeapProfilerCapacityError, sym_type, sym_class,
+             sym_address, sym_value, sym_memsize, sym_imemo_type, sym_struct, sym_file,
+             sym_line, sym_shared, sym_references, id_uminus;
 
 typedef struct {
     dom::parser *parser;
@@ -157,7 +157,11 @@ static VALUE rb_heap_build_index(VALUE self, VALUE path, VALUE batch_size) {
             }
         }
     } catch (simdjson::simdjson_error error) {
-        rb_raise(rb_eHeapProfilerError, "exc: %s", error.what());
+        if (error.error() == CAPACITY) {
+            rb_raise(rb_eHeapProfilerCapacityError, "The parser batch size is too small to parse this heap dump");
+        } else {
+            rb_raise(rb_eHeapProfilerError, "exc: %s", error.what());
+        }
     }
 
     VALUE return_value = rb_ary_new();
@@ -281,7 +285,11 @@ static VALUE rb_heap_load_many(VALUE self, VALUE arg, VALUE since, VALUE batch_s
 
         return Qnil;
     } catch (simdjson::simdjson_error error) {
-        rb_raise(rb_eHeapProfilerError, "%s", error.what());
+        if (error.error() == CAPACITY) {
+            rb_raise(rb_eHeapProfilerCapacityError, "The parser batch size is too small to parse this heap dump");
+        } else {
+            rb_raise(rb_eHeapProfilerError, "exc: %s", error.what());
+        }
     }
 }
 
@@ -304,6 +312,9 @@ extern "C" {
 
         rb_eHeapProfilerError = rb_const_get(rb_mHeapProfiler, rb_intern("Error"));
         rb_global_variable(&rb_eHeapProfilerError);
+
+        rb_eHeapProfilerCapacityError = rb_const_get(rb_mHeapProfiler, rb_intern("CapacityError"));
+        rb_global_variable(&rb_eHeapProfilerCapacityError);
 
         VALUE rb_mHeapProfilerParserNative = rb_const_get(rb_const_get(rb_mHeapProfiler, rb_intern("Parser")), rb_intern("Native"));
         rb_define_alloc_func(rb_mHeapProfilerParserNative, parser_allocate);
