@@ -18,7 +18,7 @@ GEM
     rake-compiler (1.1.1)
       rake
     regexp_parser (2.0.3)
-    rexml (3.2.4)
+    rexml (3.2.5)
     rubocop (1.8.1)
       parallel (~> 1.10)
       parser (>= 3.0.0.0)
@@ -38,6 +38,7 @@ GEM
 
 PLATFORMS
   x86_64-darwin-19
+  x86_64-linux
 
 DEPENDENCIES
   benchmark-ips
