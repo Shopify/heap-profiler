@@ -38,6 +38,7 @@ GEM
 
 PLATFORMS
   x86_64-darwin-19
+  x86_64-linux
 
 DEPENDENCIES
   benchmark-ips
@@ -50,4 +51,4 @@ DEPENDENCIES
   stackprof
 
 BUNDLED WITH
-   2.2.5
+   2.2.22
