@@ -261,26 +261,27 @@ static VALUE rb_heap_load_many(VALUE self, VALUE arg, VALUE since, VALUE batch_s
             rb_raise(rb_eHeapProfilerError, "%s", error_message(error));
         }
 
+        int64_t generation = -1;
         if (RTEST(since)) {
             Check_Type(since, T_FIXNUM);
-            int64_t generation = FIX2INT(since);
-            for (dom::element object : objects) {
-                int64_t object_generation;
-                if (object["generation"].get(object_generation) || object_generation < generation) {
-                    continue;
-                }
+            generation = FIX2INT(since);
+        }
 
-                std::string_view file;
-                if (!object["file"].get(file) && file == "__hprof") {
-                    continue;
-                }
+        for (dom::element object : objects) {
+            int64_t object_generation;
+            if (generation > -1 && object["generation"].get(object_generation) || object_generation < generation) {
+                continue;
+            }
 
-                rb_yield(make_ruby_object(object));
+            std::string_view property;
+            if (!object["file"].get(property) && property == "__hprof") {
+                continue;
             }
-        } else {
-            for (dom::element object : objects) {
-                rb_yield(make_ruby_object(object));
+            if (!object["struct"].get(property) && property == "ObjectTracing/allocation_info_tracer") {
+                continue;
             }
+
+            rb_yield(make_ruby_object(object));
         }
 
         return Qnil;
