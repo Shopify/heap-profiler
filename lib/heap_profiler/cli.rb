@@ -27,7 +27,11 @@ module HeapProfiler
 
     def print_report(path)
       results = if File.directory?(path)
-        DiffResults.new(path)
+        if @retained_only
+          DiffResults.new(path, ["retained"])
+        else
+          DiffResults.new(path)
+        end
       else
         HeapResults.new(path)
       end
@@ -70,6 +74,10 @@ module HeapProfiler
         opts.separator ""
         opts.separator "GLOBAL OPTIONS"
         opts.separator ""
+
+        opts.on('-r', '--retained-only', 'Only compute report for memory retentions.') do
+          @retained_only = true
+        end
 
         help = <<~EOS
           Sets the simdjson parser batch size. It must be larger than the largest JSON document in the
