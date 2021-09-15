@@ -41,6 +41,19 @@ To then analyse the profile, run the `heap-profiler` command against the directo
 Note that on large applications this can take a while, but if you are profiling a production
 application, you can download the profile directory and do the analysis on another machine.
 
+### Options
+
+```
+Usage: heap-profiler <directory_or_heap_dump> OPTIONS"
+
+OPTIONS
+
+    -r, --retained-only              Only compute report for memory retentions.
+        --batch-size SIZE            Sets the simdjson parser batch size. It must be larger than the largest JSON document in the heap dump, and defaults to 10MB.
+```
+
+
+
 ```bash
 $ heap-profiler path/to/report/directory
       Total allocated: 3.72 kB (36 objects)
