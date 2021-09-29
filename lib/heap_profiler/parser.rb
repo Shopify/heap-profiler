@@ -48,7 +48,9 @@ module HeapProfiler
 
     class Native
       def build_index(path, batch_size: Parser.batch_size)
+        p [:build_index]
         indexes = _build_index(path, batch_size)
+        p [:done]
         indexes.first.default_proc = CLASS_DEFAULT_PROC
         indexes
       end

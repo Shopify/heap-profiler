@@ -7462,16 +7462,19 @@ inline simdjson_result<padded_string> padded_string::load(const std::string &fil
   SIMDJSON_POP_DISABLE_WARNINGS
 
   if (fp == nullptr) {
+          puts("nullptr");
     return IO_ERROR;
   }
 
   // Get the file size
   if(std::fseek(fp, 0, SEEK_END) < 0) {
     std::fclose(fp);
+    puts("fseek fail");
     return IO_ERROR;
   }
   long llen = std::ftell(fp);
   if((llen < 0) || (llen == LONG_MAX)) {
+          puts("llen");
     std::fclose(fp);
     return IO_ERROR;
   }
@@ -7488,6 +7491,8 @@ inline simdjson_result<padded_string> padded_string::load(const std::string &fil
   std::rewind(fp);
   size_t bytes_read = std::fread(s.data(), 1, len, fp);
   if (std::fclose(fp) != 0 || bytes_read != len) {
+          puts("bytes_read");
+          
     return IO_ERROR;
   }
 
@@ -8023,17 +8028,23 @@ inline simdjson_result<size_t> parser::read_file(const std::string &path) noexce
   SIMDJSON_POP_DISABLE_WARNINGS
 
   if (fp == nullptr) {
+          puts("nullptr");
+          
     return IO_ERROR;
   }
 
   // Get the file size
   if(std::fseek(fp, 0, SEEK_END) < 0) {
     std::fclose(fp);
+    puts("fseek");
+    
     return IO_ERROR;
   }
   long len = std::ftell(fp);
   if((len < 0) || (len == LONG_MAX)) {
     std::fclose(fp);
+    puts("ftell");
+    
     return IO_ERROR;
   }
 
@@ -8051,6 +8062,8 @@ inline simdjson_result<size_t> parser::read_file(const std::string &path) noexce
   std::rewind(fp);
   size_t bytes_read = std::fread(loaded_bytes.get(), 1, len, fp);
   if (std::fclose(fp) != 0 || bytes_read != size_t(len)) {
+          puts("fread");
+          
     return IO_ERROR;
   }
 
