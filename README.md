@@ -242,7 +242,7 @@ If you can, you should enable allocation tracing as early as possible during you
 
 ```ruby
 require 'objspace'
-ObjectSpace.trace_object_allocations_start.
+ObjectSpace.trace_object_allocations_start
 ```
 
 Then to dump the heap:
