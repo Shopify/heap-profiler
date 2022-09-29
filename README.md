@@ -44,11 +44,12 @@ application, you can download the profile directory and do the analysis on anoth
 ### Options
 
 ```
-Usage: heap-profiler <directory_or_heap_dump> OPTIONS"
+Usage: heap-profiler <directory_or_heap_dump> OPTIONS
 
 OPTIONS
 
     -r, --retained-only              Only compute report for memory retentions.
+    -m, --max=NUM                    Max number of entries to output. (Defaults to 50)
         --batch-size SIZE            Sets the simdjson parser batch size. It must be larger than the largest JSON document in the heap dump, and defaults to 10MB.
 ```
 
