@@ -79,6 +79,11 @@ module HeapProfiler
           @retained_only = true
         end
 
+        HeapProfiler::AbstractResults.top_entries_count = 50
+        opts.on("-m", "--max=NUM", Integer, "Max number of entries to output. (Defaults to 50)") do |arg|
+          HeapProfiler::AbstractResults.top_entries_count = arg
+        end
+
         help = <<~EOS
           Sets the simdjson parser batch size. It must be larger than the largest JSON document in the
           heap dump, and defaults to 10MB.

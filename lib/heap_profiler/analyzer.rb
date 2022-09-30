@@ -143,12 +143,13 @@ module HeapProfiler
           end
         end
 
-        def top_n(_max)
+        def top_n(max)
           values = @locations_counts.values
           values.sort! do |a, b|
             cmp = b.count <=> a.count
             cmp == 0 ? b.location <=> a.location : cmp
           end
+          values.take(max)
         end
       end
 

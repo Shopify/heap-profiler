@@ -19,6 +19,11 @@ module HeapProfiler
 
     attr_reader :types, :dimensions
 
+    @top_entries_count = 50
+    class << self
+      attr_accessor :top_entries_count
+    end
+
     def initialize(*, **)
       raise NotImplementedError
     end
@@ -95,7 +100,7 @@ module HeapProfiler
 
     def dump_data(io, dimensions, metric, grouping, options)
       print_title io, "#{metric} by #{grouping}"
-      data = dimensions[grouping].top_n(metric, options.fetch(:top, 50))
+      data = dimensions[grouping].top_n(metric, AbstractResults.top_entries_count)
 
       scale_data = metric == "memory" && options[:scale_bytes]
       normalize_paths = options[:normalize_paths]
@@ -112,7 +117,7 @@ module HeapProfiler
     def dump_strings(io, dimensions, options)
       normalize_paths = options[:normalize_paths]
       scale_data = options[:scale_bytes]
-      top = options.fetch(:top, 50)
+      top = AbstractResults.top_entries_count
 
       print_title(io, "String Report")
 
@@ -176,7 +181,7 @@ module HeapProfiler
 
     def dump_data(io, dimensions, type, metric, grouping, options)
       print_title io, "#{type} #{metric} by #{grouping}"
-      data = dimensions[type][grouping].top_n(metric, options.fetch(:top, 50))
+      data = dimensions[type][grouping].top_n(metric, AbstractResults.top_entries_count)
 
       scale_data = metric == "memory" && options[:scale_bytes]
       normalize_paths = options[:normalize_paths]
@@ -193,7 +198,7 @@ module HeapProfiler
     def dump_strings(io, dimensions, type, options)
       normalize_paths = options[:normalize_paths]
       scale_data = options[:scale_bytes]
-      top = options.fetch(:top, 50)
+      top = AbstractResults.top_entries_count
 
       print_title(io, "#{type.capitalize} String Report")
 
