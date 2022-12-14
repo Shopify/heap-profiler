@@ -14,7 +14,8 @@ module HeapProfiler
       24 => 'YB',
     }.freeze
 
-    METRICS = ["memory", "objects", "strings"].freeze
+    METRICS = ["memory", "objects", "strings", "shape_edges"].freeze
+    GROUPED_METRICS = ["memory", "objects"]
     GROUPINGS = ["gem", "file", "location", "class"].freeze
 
     attr_reader :types, :dimensions
@@ -87,7 +88,7 @@ module HeapProfiler
               "(#{dimensions['total'].objects} objects)"
 
       @metrics.each do |metric|
-        next if metric == "strings"
+        next unless GROUPED_METRICS.include?(metric)
         @groupings.each do |grouping|
           dump_data(io, dimensions, metric, grouping, options)
         end
@@ -95,6 +96,10 @@ module HeapProfiler
 
       if @metrics.include?("strings")
         dump_strings(io, dimensions, options)
+      end
+
+      if @metrics.include?("shape_edges")
+        dump_shape_edges(io, dimensions, options)
       end
     end
 
@@ -132,6 +137,19 @@ module HeapProfiler
         io.puts
       end
     end
+
+    def dump_shape_edges(io, dimensions, _options)
+      top = AbstractResults.top_entries_count
+
+      data = dimensions["shape_edges"].top_n(top)
+      unless data.empty?
+        print_title(io, "Shape Edges Report")
+
+        data.each do |edge_name, count|
+          print_output io, count, edge_name
+        end
+      end
+    end
   end
 
   class DiffResults < AbstractResults
@@ -165,7 +183,7 @@ module HeapProfiler
 
       @types.each do |type|
         @metrics.each do |metric|
-          next if metric == "strings"
+          next unless GROUPED_METRICS.include?(metric)
           @groupings.each do |grouping|
             dump_data(io, dimensions, type, metric, grouping, options)
           end
@@ -175,6 +193,12 @@ module HeapProfiler
       if @metrics.include?("strings")
         @types.each do |type|
           dump_strings(io, dimensions[type], type, options)
+        end
+      end
+
+      if @metrics.include?("shape_edges")
+        @types.each do |type|
+          dump_shape_edges(io, dimensions[type], type, options)
         end
       end
     end
@@ -211,6 +235,19 @@ module HeapProfiler
           print_output2 io, '', string_location.count, location
         end
         io.puts
+      end
+    end
+
+    def dump_shape_edges(io, dimensions, _type, _options)
+      top = AbstractResults.top_entries_count
+
+      data = dimensions["shape_edges"].top_n(top)
+      unless data.empty?
+        print_title(io, "Shape Edges Report")
+
+        data.each do |edge_name, count|
+          print_output io, count, edge_name
+        end
       end
     end
   end

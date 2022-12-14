@@ -7,7 +7,7 @@ using namespace simdjson;
 
 static VALUE rb_eHeapProfilerError, rb_eHeapProfilerCapacityError, sym_type, sym_class,
              sym_address, sym_value, sym_memsize, sym_imemo_type, sym_struct, sym_file,
-             sym_line, sym_shared, sym_references, id_uminus;
+             sym_line, sym_shared, sym_references, sym_edge_name, id_uminus;
 
 typedef struct {
     dom::parser *parser;
@@ -190,8 +190,11 @@ static VALUE make_ruby_object(dom::object object)
     }
 
     std::string_view _class;
-    if (!object["class"].get(_class)) {
-        rb_hash_aset(hash, sym_class, INT2FIX(parse_address(_class)));
+    if (type != "IMEMO") {
+        // IMEMO "class" field can sometime be junk
+        if (!object["class"].get(_class)) {
+            rb_hash_aset(hash, sym_class, INT2FIX(parse_address(_class)));
+        }
     }
 
     uint64_t memsize;
@@ -232,6 +235,11 @@ static VALUE make_ruby_object(dom::object object)
                 }
                 rb_hash_aset(hash, sym_references, references);
             }
+        }
+    } else if (type == "SHAPE") {
+        std::string_view edge_name;
+        if (!object["edge_name"].get(edge_name)) {
+            rb_hash_aset(hash, sym_edge_name, make_string(edge_name));
         }
     }
 
@@ -299,6 +307,7 @@ extern "C" {
         sym_type = ID2SYM(rb_intern("type"));
         sym_class = ID2SYM(rb_intern("class"));
         sym_address = ID2SYM(rb_intern("address"));
+        sym_edge_name = ID2SYM(rb_intern("edge_name"));
         sym_value = ID2SYM(rb_intern("value"));
         sym_memsize = ID2SYM(rb_intern("memsize"));
         sym_struct = ID2SYM(rb_intern("struct"));

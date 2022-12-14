@@ -6,6 +6,17 @@ require 'fileutils'
 require 'date'
 
 class SomeCustomStuff
+  def initialize
+    @root = 1
+  end
+
+  def foo
+    @foo = 1
+  end
+
+  def bar
+    @bar = 2
+  end
 end
 
 $freed_objects = [+"i am free", +"i am free too"]
@@ -18,6 +29,8 @@ if ARGV[1] == '--empty'
   HeapProfiler.report(dir) {}
 else
   HeapProfiler.report(dir) do
+    SomeCustomStuff.new.tap(&:foo).tap(&:bar)
+    SomeCustomStuff.new.tap(&:bar)
     $retained_objects = [
       +"I am retained",
       +"I am retained",
