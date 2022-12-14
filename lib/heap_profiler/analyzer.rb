@@ -179,6 +179,29 @@ module HeapProfiler
       end
     end
 
+    class ShapeEdgeDimension
+      def initialize
+        @stats = Hash.new(0)
+      end
+
+      def process(_index, object)
+        if name = object[:edge_name]
+          @stats[name] += 1
+        end
+      end
+
+      def top_n(max)
+        @stats.sort do |(a_name, a_count), (b_name, b_count)|
+          cmp = b_count <=> a_count
+          if cmp == 0
+            a_name <=> b_name
+          else
+            cmp
+          end
+        end.take(max)
+      end
+    end
+
     def initialize(heap, index)
       @heap = heap
       @index = index
@@ -189,6 +212,8 @@ module HeapProfiler
       metrics.each do |metric|
         if metric == "strings"
           dimensions["strings"] = StringDimension.new
+        elsif metric == "shape_edges"
+          dimensions["shape_edges"] = ShapeEdgeDimension.new
         else
           dimensions["total"] = Dimension.new
           groupings.each do |grouping|

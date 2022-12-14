@@ -19,5 +19,8 @@ Lint/RescueException:
 Lint/MissingSuper:
   Enabled: false
 
+Lint/AssignmentInCondition:
+  Enabled: false
+
 Metrics/ParameterLists:
   Enabled: false

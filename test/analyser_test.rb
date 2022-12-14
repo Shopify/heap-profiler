@@ -24,31 +24,29 @@ module HeapProfiler
     def test_total_object_counts
       analyser = build_analyzer('diffed-heap')
       data = analyser.run(%w(objects memory), [])
-      assert_equal 36, data['total'].objects
-      assert_equal 3_717, data['total'].memory
+      assert_equal 46, data['total'].objects
+      assert_equal 3_096, data['total'].memory
     end
 
     def test_total_per_gem_counts
       analyser = build_analyzer('diffed-heap')
       data = analyser.run(%w(objects), %w(gem))
-      assert_equal({ "other" => 36 }, data['gem'].objects)
+      assert_equal({ "heap-profiler/lib" => 8, "other" => 38 }, data['gem'].objects)
     end
 
     def test_total_per_class_counts
       analyser = build_analyzer('diffed-heap')
       data = analyser.run(%w(objects), %w(class))
       expected = {
-        "String" => 12,
-        "Array" => 4,
-        "Date" => 1,
-        "SomeCustomStuff" => 1,
-        "<ment> (IMEMO)" => 8,
-        "<ifunc> (IMEMO)" => 2,
-        "Class" => 2,
+        "<constcache> (IMEMO)" => 9,
+        "<callcache> (IMEMO)" => 11,
+        "SomeCustomStuff" => 3,
+        "<ment> (IMEMO)" => 9,
+        "String" => 8,
+        "Array" => 2,
         "Hash" => 1,
-        "Symbol" => 1,
-        "<cref> (IMEMO)" => 2,
-        "<iseq> (IMEMO)" => 2,
+        "Date" => 1,
+        "Class" => 2,
       }
       assert_equal expected, data['class'].objects
     end
