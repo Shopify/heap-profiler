@@ -11,9 +11,18 @@ module HeapProfiler
       parser.parse!(@argv)
 
       begin
-        if @argv.size == 1
-          print_report(@argv.first)
+        case @argv.first
+        when "clean"
+          clean_dump(@argv[1])
           return 0
+        when "report"
+          print_report(@argv[1])
+          return 0
+        else
+          if @argv.size == 1
+            print_report(@argv.first)
+            return 0
+          end
         end
       rescue CapacityError => error
         STDERR.puts(error.message)
@@ -38,8 +47,32 @@ module HeapProfiler
       results.pretty_print(scale_bytes: true, normalize_paths: true)
     end
 
+    def clean_dump(path)
+      require "json"
+      errors = index = 0
+      clean_path = "#{path}.clean"
+      File.open(clean_path, "w+") do |output|
+        File.open(path) do |input|
+          input.each_line do |line|
+            begin
+              JSON.parse(line)
+            rescue JSON::ParserError
+              errors += 1
+              $stderr.puts("Invalid JSON found on line #{index}. Skipping")
+            else
+              output.print(line)
+            end
+            index += 1
+          end
+        end
+      end
+      $stderr.puts("Processed #{index} lines, removed #{errors} invalid lines")
+      $stderr.puts("Clean dump available at #{clean_path}")
+    end
+
     def print_usage
       puts "Usage: #{$PROGRAM_NAME} directory_or_heap_dump"
+      puts @parser.help
     end
 
     SIZE_UNITS = {
@@ -70,9 +103,17 @@ module HeapProfiler
 
     def parser
       @parser ||= OptionParser.new do |opts|
-        opts.banner = "Usage: heap-profiler [ARGS]"
-        opts.separator ""
-        opts.separator "GLOBAL OPTIONS"
+        opts.banner = <<~EOS
+          Usage: heap-profiler [SUBCOMMAND] [ARGS]"
+
+          SUBCOMMANDS
+
+            report: Produce a full memory report from the provided dump. (default)
+
+            clean: Remove all malformed lines from the provided heap dump. Can be useful to workaround some ruby bugs.
+
+          GLOBAL OPTIONS
+        EOS
         opts.separator ""
 
         opts.on('-r', '--retained-only', 'Only compute report for memory retentions.') do
@@ -84,9 +125,8 @@ module HeapProfiler
           HeapProfiler::AbstractResults.top_entries_count = arg
         end
 
-        help = <<~EOS
-          Sets the simdjson parser batch size. It must be larger than the largest JSON document in the
-          heap dump, and defaults to 10MB.
+        help = <<~EOS.lines.join(" ")
+          Sets the simdjson parser batch size. It must be larger than the largest JSON document in the heap dump, and defaults to 10MB.
         EOS
         opts.on('--batch-size SIZE', help.strip) do |size_string|
           HeapProfiler::Parser.batch_size = parse_byte_size(size_string)
