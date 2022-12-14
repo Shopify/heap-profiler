@@ -31,6 +31,7 @@ module HeapProfiler
       REGEXP: "Regexp",
       MATCH: "MatchData",
       ROOT: "<VM Root>",
+      SHAPE: "SHAPE",
     }.freeze
 
     IMEMO_TYPES = Hash.new { |h, k| h[k] = "<#{k || 'unknown'}> (IMEMO)" }
