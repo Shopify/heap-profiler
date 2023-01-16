@@ -84,8 +84,10 @@ module HeapProfiler
       analyzer = Analyzer.new(heap, index)
       dimensions = analyzer.run(@metrics, @groupings)
 
-      io.puts "Total: #{scale_bytes(dimensions['total'].memory)} " \
-              "(#{dimensions['total'].objects} objects)"
+      if dimensions['total']
+        io.puts "Total: #{scale_bytes(dimensions['total'].memory)} " \
+                "(#{dimensions['total'].objects} objects)"
+      end
 
       @metrics.each do |metric|
         next unless GROUPED_METRICS.include?(metric)
