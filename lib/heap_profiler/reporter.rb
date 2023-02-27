@@ -46,7 +46,7 @@ module HeapProfiler
 
       HeapProfiler.name_anonymous_modules!
 
-      4.times { GC.start }
+      GC.start
       GC.disable
       @generation = GC.count
     end
@@ -60,7 +60,7 @@ module HeapProfiler
       dump_heap(@allocated_heap)
 
       GC.enable
-      4.times { GC.start }
+      GC.start
       dump_heap(@retained_heap, partial: true)
       @allocated_heap.close
       @retained_heap.close
