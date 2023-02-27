@@ -19,6 +19,7 @@ module HeapProfiler
       @report_directory = report_directory
       @allocated = open_dump('allocated')
       @generation = Integer(File.read(File.join(report_directory, 'generation.info')))
+      @generation = nil if @generation == 0
     end
 
     def allocated_diff

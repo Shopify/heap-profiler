@@ -35,9 +35,11 @@ module HeapProfiler
       @dir_path = dir_path
       @enable_tracing = !allocation_tracing_enabled?
       @generation = nil
+      @partial = true
     end
 
-    def start
+    def start(partial: true)
+      @partial = partial
       FileUtils.mkdir_p(@dir_path)
       ObjectSpace.trace_object_allocations_start if @enable_tracing
 
@@ -61,10 +63,10 @@ module HeapProfiler
 
       GC.enable
       GC.start
-      dump_heap(@retained_heap, partial: true)
+      dump_heap(@retained_heap, partial: @partial)
       @allocated_heap.close
       @retained_heap.close
-      write_info("generation", @generation.to_s)
+      write_info("generation", @partial ? @generation.to_s : "0")
     end
 
     def run

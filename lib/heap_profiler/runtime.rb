@@ -13,10 +13,10 @@ module HeapProfiler
   class << self
     attr_accessor :current_reporter
 
-    def start(dir)
+    def start(dir, **kwargs)
       return if current_reporter
       self.current_reporter = Reporter.new(dir)
-      current_reporter.start
+      current_reporter.start(**kwargs)
     end
 
     def stop
