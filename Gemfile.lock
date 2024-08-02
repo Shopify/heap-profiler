@@ -18,8 +18,8 @@ GEM
     rake-compiler (1.1.1)
       rake
     regexp_parser (2.0.3)
-    rexml (3.2.8)
-      strscan (>= 3.0.9)
+    rexml (3.3.3)
+      strscan
     rubocop (1.8.1)
       parallel (~> 1.10)
       parser (>= 3.0.0.0)
