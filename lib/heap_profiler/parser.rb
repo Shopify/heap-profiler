@@ -74,5 +74,10 @@ module HeapProfiler
       end
     end
   end
-  require "heap_profiler/heap_profiler"
+
+  begin
+    require "heap_profiler/#{RUBY_VERSION[/^\d+\.\d+/]}/heap_profiler"
+  rescue LoadError
+    require "heap_profiler/heap_profiler"
+  end
 end
