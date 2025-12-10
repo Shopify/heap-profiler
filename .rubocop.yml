@@ -10,6 +10,9 @@ AllCops:
 Style/MethodCallWithArgsParentheses:
   Enabled: false
 
+Style/RedundantBegin:
+  Enabled: false
+
 Naming/FileName:
   Enabled: false
 

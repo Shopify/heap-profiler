@@ -63,7 +63,7 @@ module HeapProfiler
 
       scale = Math.log10(bytes).div(3) * 3
       scale = 24 if scale > 24
-      format("%.2f #{UNIT_PREFIXES[scale]}", (bytes / 10.0**scale))
+      format("%.2f #{UNIT_PREFIXES[scale]}", bytes / 10.0**scale)
     end
   end
 
