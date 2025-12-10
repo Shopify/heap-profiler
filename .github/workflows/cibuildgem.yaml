@@ -7,8 +7,6 @@ on:
         required: false
         type: boolean
         default: false
-  push:
-
 jobs:
   compile:
     timeout-minutes: 20
@@ -69,6 +67,7 @@ jobs:
         with:
           step: "install"
   release:
+    environment: release
     permissions:
       id-token: write
       contents: read
