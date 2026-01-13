@@ -44,7 +44,7 @@ GEM
     stackprof (0.2.27)
     unicode-display_width (3.2.0)
       unicode-emoji (~> 4.1)
-    unicode-emoji (4.1.0)
+    unicode-emoji (4.2.0)
 
 PLATFORMS
   aarch64-linux
@@ -52,6 +52,7 @@ PLATFORMS
   arm64-darwin-25
   x86_64-darwin-20
   x86_64-darwin-22
+  x86_64-darwin-24
   x86_64-linux
 
 DEPENDENCIES

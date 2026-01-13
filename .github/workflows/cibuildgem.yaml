@@ -34,7 +34,7 @@ jobs:
     strategy:
       matrix:
         os: ["macos-latest", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-15-intel"]
-        rubies: ["3.1", "3.2", "3.3", "3.4"]
+        rubies: ["3.1", "3.2", "3.3", "3.4", "4.0"]
         type: ["cross", "native"]
     runs-on: "${{ matrix.os }}"
     steps:
@@ -61,7 +61,7 @@ jobs:
       - name: "Setup Ruby"
         uses: "ruby/setup-ruby@v1"
         with:
-          ruby-version: "3.4.7"
+          ruby-version: "4.0"
       - name: "Run cibuildgem"
         uses: "shopify/cibuildgem/.github/actions/cibuildgem@main"
         with:
@@ -80,7 +80,7 @@ jobs:
       - name: "Setup Ruby"
         uses: "ruby/setup-ruby@v1"
         with:
-          ruby-version: "3.4.7"
+          ruby-version: "4.0"
       - name: "Run cibuildgem"
         uses: "shopify/cibuildgem/.github/actions/cibuildgem@main"
         with:
