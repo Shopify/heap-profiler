@@ -69,6 +69,18 @@ module HeapProfiler
       refute string_index.key?(0x3)
     end
 
+    def test_malformed_mid_stream_raises
+      # A corrupted object mid-stream should raise.
+      # The "clean" command would discard this line for the same reason.
+      assert_raises(HeapProfiler::Error) do
+        @native.build_index(fixtures_path('malformed-mid-stream.heap'))
+      end
+
+      assert_raises(HeapProfiler::Error) do
+        @native.load_many(fixtures_path('malformed-mid-stream.heap')) {}
+      end
+    end
+
     def test_batch_size_splits_docs_and_indexes_and_yields_every_object
       # With batch_size just above the longest line, the file splits across many
       # chunks and most documents straddle a chunk boundary.
