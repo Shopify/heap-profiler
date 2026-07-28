@@ -69,6 +69,27 @@ module HeapProfiler
       refute string_index.key?(0x3)
     end
 
+    def test_batch_size_splits_docs_and_indexes_and_yields_every_object
+      # With batch_size just above the longest line, the file splits across many
+      # chunks and most documents straddle a chunk boundary.
+      fixture = fixtures_path('multichunk.heap')
+      longest = File.readlines(fixture).map(&:bytesize).max
+      previous_batch_size = Parser.batch_size
+      Parser.batch_size = longest + 16
+      begin
+        assert File.size(fixture) > Parser.batch_size, "fixture must span multiple chunks"
+        _, string_index = @native.build_index(fixture)
+        assert_equal 50, string_index.size
+        50.times { |i| assert_equal "s#{i}", string_index[i + 1] }
+
+        yielded = 0
+        @native.load_many(fixture) { yielded += 1 }
+        assert_equal 50, yielded
+      ensure
+        Parser.batch_size = previous_batch_size
+      end
+    end
+
     private
 
     def assert_address_parsing(address)
