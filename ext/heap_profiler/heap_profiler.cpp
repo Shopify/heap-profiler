@@ -276,9 +276,14 @@ static VALUE rb_heap_load_many(VALUE self, VALUE arg, VALUE since, VALUE batch_s
         }
 
         for (dom::element object : objects) {
-            int64_t object_generation;
-            if (generation > -1 && object["generation"].get(object_generation) || object_generation < generation) {
-                continue;
+            // Filter by generation only when the threshold is set.
+            if (generation > -1) {
+                int64_t object_generation;
+                // If "generation" is missing (get() returns an error) we skip.
+                // Otherwise object_generation will be set and we can check it.
+                if (object["generation"].get(object_generation) || object_generation < generation) {
+                    continue;
+                }
             }
 
             std::string_view property;
