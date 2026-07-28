@@ -61,6 +61,14 @@ module HeapProfiler
       Parser.batch_size = previous_batch_size
     end
 
+    def test_truncated_final_line_is_dropped
+      # A heap dump whose final line is incomplete (a Ruby dump_all bug, issue #12).
+      # build_index must terminate and skip the truncated line rather than hang.
+      _, string_index = @native.build_index(fixtures_path('truncated-final-line.heap'))
+      assert_equal "ok", string_index[0x1]
+      refute string_index.key?(0x3)
+    end
+
     private
 
     def assert_address_parsing(address)
