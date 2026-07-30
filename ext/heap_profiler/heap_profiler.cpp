@@ -1,7 +1,11 @@
 #include "ruby.h"
 #include "ruby/encoding.h"
 #include "simdjson.h"
-#include <fstream>
+#include <cstdio>
+#include <cstring>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 using namespace simdjson;
 
@@ -106,56 +110,90 @@ static VALUE rb_heap_build_index(VALUE self, VALUE path, VALUE batch_size) {
     Check_Type(path, T_STRING);
     Check_Type(batch_size, T_FIXNUM);
     dom::parser *parser = get_parser(self);
-    dom::document_stream objects;
 
     VALUE string_index = rb_hash_new();
     VALUE class_index = rb_hash_new();
 
     try {
-        auto error = parser->load_many(RSTRING_PTR(path), FIX2INT(batch_size)).get(objects);
-        if (error != SUCCESS) {
-            rb_raise(rb_eHeapProfilerError, "%s", error_message(error));
+        std::unique_ptr<std::FILE, int(*)(std::FILE*)> fp(std::fopen(RSTRING_PTR(path), "rb"), &std::fclose);
+        if (!fp) {
+            throw std::runtime_error(std::string("Failed to open ") + RSTRING_PTR(path));
         }
 
-        for (dom::object object : objects) {
-            std::string_view type;
-            if (object["type"].get(type)) {
-                continue;
+        // Stream the file in fixed-size padded chunks so a multi-GB dump never
+        // needs to be loaded all at once. parse_many scans one chunk; any
+        // document straddling the chunk boundary is carried over via
+        // truncated_bytes() and re-parsed with the next read.
+        padded_string chunk(FIX2INT(batch_size));
+        size_t filled = std::fread(chunk.data(), 1, chunk.size(), fp.get());
+        while (filled > 0) {
+            dom::document_stream stream;
+            auto error = parser->parse_many(chunk.data(), filled, chunk.size()).get(stream);
+            if (error != SUCCESS) {
+                throw simdjson::simdjson_error(error);
             }
 
-            if (type == "STRING") {
-                std::string_view value;
-                if (!object["value"].get(value)) {
-                    VALUE address = INT2FIX(parse_dom_address(object["address"]));
-                    VALUE string = make_string(value);
-                    rb_hash_aset(string_index, address, string);
+            for (auto it = stream.begin(); it != stream.end(); ++it) {
+                dom::object object;
+                auto err = (*it).get(object);
+
+                if (err != SUCCESS) {
+                    throw simdjson::simdjson_error(err);
                 }
-            } else if (type == "CLASS" || type == "MODULE") {
-                VALUE address = INT2FIX(parse_dom_address(object["address"]));
-                VALUE class_name = Qfalse;
 
-                std::string_view name;
-                if (!object["name"].get(name)) {
-                    class_name = dedup_string(name);
-                } else {
-                    std::string_view file;
-                    uint64_t line;
+                std::string_view type;
+                if (object["type"].get(type)) {
+                    continue;
+                }
 
-                    if (!object["file"].get(file) && !object["line"].get(line)) {
-                        std::string buffer = "<Class ";
-                        buffer += file;
-                        buffer += ":";
-                        buffer += std::to_string(line);
-                        buffer += ">";
-                        class_name = dedup_string(buffer);
+                if (type == "STRING") {
+                    std::string_view value;
+                    if (!object["value"].get(value)) {
+                        VALUE address = INT2FIX(parse_dom_address(object["address"]));
+                        VALUE string = make_string(value);
+                        rb_hash_aset(string_index, address, string);
+                    }
+                } else if (type == "CLASS" || type == "MODULE") {
+                    VALUE address = INT2FIX(parse_dom_address(object["address"]));
+                    VALUE class_name = Qfalse;
+
+                    std::string_view name;
+                    if (!object["name"].get(name)) {
+                        class_name = dedup_string(name);
+                    } else {
+                        std::string_view file;
+                        uint64_t line;
+
+                        if (!object["file"].get(file) && !object["line"].get(line)) {
+                            std::string buffer = "<Class ";
+                            buffer += file;
+                            buffer += ":";
+                            buffer += std::to_string(line);
+                            buffer += ">";
+                            class_name = dedup_string(buffer);
+                        }
+                    }
+
+                    if (RTEST(class_name)) {
+                        rb_hash_aset(class_index, address, class_name);
                     }
                 }
-
-                if (RTEST(class_name)) {
-                    rb_hash_aset(class_index, address, class_name);
-                }
             }
+
+            size_t truncated = stream.truncated_bytes();
+            if (truncated == filled) {
+                // Nothing was consumed: either a truncated final line at EOF
+                // (drop it) or a single document larger than the buffer.
+                if (std::feof(fp.get())) break;
+                throw simdjson::simdjson_error(CAPACITY);
+            }
+
+            // Put the leftover bytes at the beginning followed by the next chunk.
+            std::memmove(chunk.data(), chunk.data() + filled - truncated, truncated);
+            filled = truncated + std::fread(chunk.data() + truncated, 1, chunk.size() - truncated, fp.get());
         }
+    } catch (const std::runtime_error& e) {
+        rb_raise(rb_eHeapProfilerError, "%s", e.what());
     } catch (simdjson::simdjson_error error) {
         if (error.error() == CAPACITY) {
             rb_raise(rb_eHeapProfilerCapacityError, "The parser batch size is too small to parse this heap dump");
@@ -262,37 +300,71 @@ static VALUE rb_heap_load_many(VALUE self, VALUE arg, VALUE since, VALUE batch_s
     Check_Type(batch_size, T_FIXNUM);
 
     dom::parser *parser = get_parser(self);
-    dom::document_stream objects;
+
+    int64_t generation = -1;
+    if (RTEST(since)) {
+        Check_Type(since, T_FIXNUM);
+        generation = FIX2INT(since);
+    }
+
     try {
-        auto error = parser->load_many(RSTRING_PTR(arg), FIX2INT(batch_size)).get(objects);
-        if (error != SUCCESS) {
-            rb_raise(rb_eHeapProfilerError, "%s", error_message(error));
+        std::unique_ptr<std::FILE, int(*)(std::FILE*)> fp(std::fopen(RSTRING_PTR(arg), "rb"), &std::fclose);
+        if (!fp) {
+            throw std::runtime_error(std::string("Failed to open ") + RSTRING_PTR(arg));
         }
 
-        int64_t generation = -1;
-        if (RTEST(since)) {
-            Check_Type(since, T_FIXNUM);
-            generation = FIX2INT(since);
-        }
-
-        for (dom::element object : objects) {
-            int64_t object_generation;
-            if (generation > -1 && object["generation"].get(object_generation) || object_generation < generation) {
-                continue;
+        padded_string chunk(FIX2INT(batch_size));
+        size_t filled = std::fread(chunk.data(), 1, chunk.size(), fp.get());
+        while (filled > 0) {
+            dom::document_stream stream;
+            auto error = parser->parse_many(chunk.data(), filled, chunk.size()).get(stream);
+            if (error != SUCCESS) {
+                throw simdjson::simdjson_error(error);
             }
 
-            std::string_view property;
-            if (!object["file"].get(property) && property == "__hprof") {
-                continue;
-            }
-            if (!object["struct"].get(property) && property == "ObjectTracing/allocation_info_tracer") {
-                continue;
+            for (auto it = stream.begin(); it != stream.end(); ++it) {
+                dom::object object;
+                auto err = (*it).get(object);
+
+                if (err != SUCCESS) {
+                    throw simdjson::simdjson_error(err);
+                }
+
+                // Filter by generation only when the threshold is set.
+                if (generation > -1) {
+                    int64_t object_generation;
+                    // If "generation" is missing (get() returns an error) we skip.
+                    // Otherwise object_generation will be set and we can check it.
+                    if (object["generation"].get(object_generation) || object_generation < generation) {
+                        continue;
+                    }
+                }
+
+                std::string_view property;
+                if (!object["file"].get(property) && property == "__hprof") {
+                    continue;
+                }
+                if (!object["struct"].get(property) && property == "ObjectTracing/allocation_info_tracer") {
+                    continue;
+                }
+
+                rb_yield(make_ruby_object(object));
             }
 
-            rb_yield(make_ruby_object(object));
+            size_t truncated = stream.truncated_bytes();
+            if (truncated == filled) {
+                // Nothing was consumed: either a truncated final line at EOF
+                // (drop it) or a single document larger than the buffer.
+                if (std::feof(fp.get())) break;
+                throw simdjson::simdjson_error(CAPACITY);
+            }
+            std::memmove(chunk.data(), chunk.data() + filled - truncated, truncated);
+            filled = truncated + std::fread(chunk.data() + truncated, 1, chunk.size() - truncated, fp.get());
         }
 
         return Qnil;
+    } catch (const std::runtime_error& e) {
+        rb_raise(rb_eHeapProfilerError, "%s", e.what());
     } catch (simdjson::simdjson_error error) {
         if (error.error() == CAPACITY) {
             rb_raise(rb_eHeapProfilerCapacityError, "The parser batch size is too small to parse this heap dump");
@@ -300,6 +372,8 @@ static VALUE rb_heap_load_many(VALUE self, VALUE arg, VALUE since, VALUE batch_s
             rb_raise(rb_eHeapProfilerError, "exc: %s", error.what());
         }
     }
+
+    return Qnil;
 }
 
 extern "C" {
