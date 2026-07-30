@@ -44,7 +44,11 @@ module HeapProfiler
       else
         HeapResults.new(path)
       end
-      results.pretty_print(scale_bytes: true, normalize_paths: true)
+      options = { scale_bytes: true, normalize_paths: true }
+      # Only set `color_output` if it was explicitly requested, otherwise
+      # the results default to colorizing only when the output is a TTY.
+      options[:color_output] = @color_output unless @color_output.nil?
+      results.pretty_print(**options)
     end
 
     def clean_dump(path)
@@ -118,6 +122,11 @@ module HeapProfiler
 
         opts.on('-r', '--retained-only', 'Only compute report for memory retentions.') do
           @retained_only = true
+        end
+
+        help = 'Colorize the output. (Defaults to only when the output is a terminal)'
+        opts.on('--[no-]color', help) do |color|
+          @color_output = color
         end
 
         HeapProfiler::AbstractResults.top_entries_count = 50
