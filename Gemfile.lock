@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    heap-profiler (0.8.0.rc1)
+    heap-profiler (0.9.0)
 
 GEM
   remote: https://rubygems.org/
